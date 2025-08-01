@@ -1,0 +1,1433 @@
+---
+title: "stream physical habitat"
+author: "Emma Brentjens"
+date: "2025-05-20"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+##setting working directory and loading data
+current_wd <- getwd()
+setwd(current_wd)
+stream_data <- read.csv("20250225_wqp_wqx_bss_wq_npsncrn.csv")
+colnames(stream_data)
+head(stream_data)
+#View(stream_data)
+
+##filtering for columns of interest
+filter_1 <- stream_data[, c("ActivityStartDate", "MonitoringLocationIdentifier",
+                       "MonitoringLocationName", "CharacteristicName", 
+                       "ResultMeasureValue", "ResultMeasure.MeasureUnitCode")]
+nrow(filter_1)
+
+##converting date to a date object
+filter_1$ActivityStartDate <- as.Date(filter_1$ActivityStartDate, format = "%Y-%m-%d")
+class(filter_1$ActivityStartDate)
+
+##creating year column
+#install.packages("lubridate")
+library(lubridate)
+filter_1$year <- year(filter_1$ActivityStartDate)
+filter_1$month <- month(filter_1$ActivityStartDate)
+
+#install.packages("dplyr")
+library(dplyr)
+#install.packages("tidyr")
+library(tidyr)
+
+library(ggplot2)
+
+#install.packages("scales")
+library(scales)
+
+#install.packages("lemon")
+library(lemon)
+
+#install.packages("ggh4x")
+library(ggh4x)
+
+library(ggnewscale)
+
+#install.paclages("xfun")
+library(xfun)
+
+library(ggtext)
+
+```
+
+Filtering for SPH
+```{r}
+sph <- filter_1 %>%
+  filter(CharacteristicName %in% c("embeddedness - percentage of rocks (gravel, cobble, boulders) covered by sediment (sand, silt)",
+                               "habitat quality - riffle", "habitat quality - pool, glide, eddy", "habitat quality - water velocity and depth",
+                               "habitat quality - epifaunal substrate", "habitat quality - instream habitat")) %>%
+  separate(MonitoringLocationIdentifier, c("Network", "Park", "Site")) %>%
+  select(ActivityStartDate, Park, Site, MonitoringLocationName, CharacteristicName, ResultMeasureValue, year, month)
+
+sph$ResultMeasureValue <- as.numeric(sph$ResultMeasureValue)
+class(sph$ResultMeasureValue)
+
+nrow(sph)
+unique(sph$CharacteristicName)
+#View(sph)
+
+```
+
+Exceedances function
+```{r}
+exceed <- function(df) {
+
+df %>%
+    mutate(is_embed=case_when(characteristic=="embed"~ T,
+                            characteristic!="embed"~ F)) %>%
+  mutate(over_55=case_when(value>=55 ~ "over_55", value<55 ~ "N")) %>%
+  mutate(under_5=case_when(value<=5 ~ "under_5", value>5 ~ "N")) %>%
+  mutate(paste_embed = paste0(characteristic, over_55)) %>%
+  mutate(paste_quality = paste0(characteristic, under_5)) %>%
+  mutate(embed_exceed=case_when(paste_embed=="embedover_55"~ T,
+                                paste_embed!="embedover_55"~ F)) %>% 
+  mutate(quality_exceed=case_when(characteristic=="embed"~ F,
+                                  paste_quality=="epifaunN" | paste_quality=="velocity_depthN" |
+                                    paste_quality=="riffleN" | paste_quality=="instreamN" |
+                                    paste_quality=="poolN" ~ F,
+                                  paste_quality=="epifaununder_5" | paste_quality=="velocity_depthunder_5" |
+                                    paste_quality=="riffleunder_5" | paste_quality=="instreamunder_5" |
+                                  paste_quality=="poolunder_5" ~ T)) %>%
+  mutate(exceed=case_when(characteristic=="embed" & embed_exceed==T ~ T,
+                          characteristic!="embed" & quality_exceed==T ~ T,
+                          embed_exceed==F & quality_exceed==F ~ F)) %>%
+  select(!c(over_55, under_5, paste_embed, paste_quality, embed_exceed, quality_exceed))
+
+}
+
+```
+
+
+CATO habitat graph
+```{r}
+cato <- sph %>%
+  subset(Park=="CATO" & (year==2010 | year==2022) & month>3) %>%
+  mutate(CharacteristicName=case_when(CharacteristicName=="embeddedness - percentage of rocks (gravel, cobble, boulders) covered by sediment (sand, silt)" ~ "embed",
+                   CharacteristicName=="habitat quality - riffle" ~ "riffle",
+                   CharacteristicName=="habitat quality - pool, glide, eddy" ~ "pool",
+                   CharacteristicName=="habitat quality - water velocity and depth" ~ "velocity_depth",
+                   CharacteristicName=="habitat quality - epifaunal substrate" ~ "epifaun",
+                   CharacteristicName=="habitat quality - instream habitat" ~ "instream")) 
+
+colnames(cato)[5:6]=c("characteristic", "value")
+
+cato <- exceed(cato)
+
+
+cato_habitat <- cato %>%
+  filter(!characteristic=="embed") %>%
+  mutate(x.axis=case_when(characteristic=="epifaun" ~ 1,
+                          characteristic=="instream" ~ 2,
+                          characteristic=="pool" ~ 3,
+                          characteristic=="riffle" ~ 4,
+                          characteristic=="velocity_depth" ~ 5))
+
+cato_habitat_graph <- ggplot() +
+  ##background regions
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=15, ymax=20, fill="#7dc7ff", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=10, ymax=15, fill="#8ba7d6", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=5, ymax=10, fill="#cf93b6", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=0, ymax=5, fill="#f27c7e", alpha=0.5) +
+  ##threshold lines
+  geom_hline(yintercept=5, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=10, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=15, linetype="dashed", color="gray55") +
+  ##bar graph
+  geom_bar(data=cato_habitat, aes(x=as.factor(x.axis), y=value, fill=as.factor(year)), 
+           color="black", width=0.7, size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white")) +
+  ##facet grid
+  facet_wrap2(.~MonitoringLocationName, axes="all", remove_labels="y",
+              strip=strip_split("bottom")) +
+  geom_text(data=cato_habitat[cato_habitat$value==0,], aes(x=as.factor(x.axis), y=value), label="•",
+            position=position_nudge(x=-0.2), vjust=-0.1, size=6) +
+  scale_x_discrete(labels=c("Epifaunal", "Instream", "Pool", "Riffle", "Velocity"),
+                   guide=guide_axis(angle = 40)) +
+  ##labels
+  xlab("Stream") +
+  ylab("Score") +
+  ##setting graph boundaries
+  coord_cartesian(ylim=c(0, 20), xlim=c(0.3, 5.7), clip="off", expand=F) +
+  ##habitat quality color scale
+  at_panel(annotate("text", x = -0.3, y = 2.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 7.5, angle = 90, vjust = 0,
+           label = "Marginal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 12.5, angle = 90, vjust = 0,
+           label = "Suboptimal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 17.5, angle = 90, vjust = 0,
+           label = "Optimal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  ##theme
+  theme_bw(base_size=15) +
+  theme(strip.placement="outside",
+        axis.text.y=element_text(size=12),
+        axis.text.x=element_text(size=10),
+        axis.title.y = element_text(size=20, vjust=7),
+        axis.title.x=element_text(size=20, vjust=-0.75), 
+        strip.text = element_text(size=15),
+        plot.margin=margin(t = 0.5, r = 1, b = 0.5, l = 1.5, unit = "cm"),
+        panel.spacing=unit(2, "lines"))
+
+cato_habitat_graph
+
+```
+
+CATO embed graph
+```{r}
+cato_embed <- cato %>%
+  subset(characteristic=="embed") %>%
+  mutate(x.axis=case_when(MonitoringLocationName=="Big Hunting Creek" ~ 1,
+                          MonitoringLocationName=="Blue Blazes Creek" ~ 2,
+                          MonitoringLocationName=="Owens Creek" ~ 3)) %>%
+  mutate(value2=100-value)
+
+cato_embed_graph <- ggplot() +
+  ##background regions
+  annotate("rect", xmin=0.1, xmax=3.6, ymin=45, ymax=100, fill="#7dc7ff", alpha=0.5) +
+  annotate("rect", xmin=0.1, xmax=3.6, ymin=0, ymax=45, fill="#f27c7e", alpha=0.5) +
+  ##threshold line
+  geom_hline(yintercept=45, linetype="dashed", color="gray55") +
+  ##bar graph
+  geom_bar(data=cato_embed, aes(x=as.factor(x.axis), y=value2, fill=as.factor(year)), 
+           color="black", width=0.7, size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white")) +
+  scale_x_discrete(labels=c("Big Hunting\nCreek", "Blue Blazes\nCreek", "Owens Creek"), guide=guide_axis(angle = 40)) +
+  scale_y_continuous(labels=c(100, 75, 50, 25, 0)) +
+  ##labels
+  xlab("Stream") +
+  ylab("Embeddedness (%)") +
+  ##setting graph boundaries
+  coord_cartesian(ylim=c(0, 100), xlim=c(0.1, 3.6), clip="off", expand=F) +
+  ##score category labels
+  annotate("text", x = 0.45, y = 22.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=5, fontface="italic") +
+  annotate("text", x = 0.45, y = 72.5, angle = 90, vjust = 0,
+           label = "Minimally impaired", color = "black", size=5, fontface="italic") +
+  ##theme
+  theme_bw(base_size=15) +
+  theme(axis.text.y=element_text(size=12),
+        axis.text.x=element_text(size=12),
+        axis.title.y = element_text(size=20, vjust=3), 
+        axis.title.x=element_text(size=20, vjust=-0.75),
+        plot.margin=margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+cato_embed_graph
+
+```
+
+
+PRWI habitat graph
+```{r}
+prwi <- sph %>%
+  filter(!(MonitoringLocationName=="Middle Branch Chopawamsic Creek" | MonitoringLocationName=="North Branch Chopawamsic Creek")) %>%
+  subset(Park=="PRWI" & (year==2011 | year==2021) & month>3) %>%
+  mutate(CharacteristicName=case_when(CharacteristicName=="embeddedness - percentage of rocks (gravel, cobble, boulders) covered by sediment (sand, silt)" ~ "embed",
+                   CharacteristicName=="habitat quality - riffle" ~ "riffle",
+                   CharacteristicName=="habitat quality - pool, glide, eddy" ~ "pool",
+                   CharacteristicName=="habitat quality - water velocity and depth" ~ "velocity_depth",
+                   CharacteristicName=="habitat quality - epifaunal substrate" ~ "epifaun",
+                   CharacteristicName=="habitat quality - instream habitat" ~ "instream")) 
+
+colnames(prwi)[5:6]=c("characteristic", "value")
+
+prwi <- exceed(prwi)
+
+
+prwi_habitat <- prwi %>%
+  filter(!characteristic=="embed") %>%
+  mutate(x.axis=case_when(characteristic=="epifaun" ~ 1,
+                          characteristic=="instream" ~ 2,
+                          characteristic=="pool" ~ 3,
+                          characteristic=="riffle" ~ 4,
+                          characteristic=="velocity_depth" ~ 5))
+
+prwi_habitat_graph <- ggplot() +
+  ##background regions
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=15, ymax=20, fill="#7dc7ff", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=10, ymax=15, fill="#8ba7d6", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=5, ymax=10, fill="#cf93b6", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=0, ymax=5, fill="#f27c7e", alpha=0.5) +
+  geom_hline(yintercept=5, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=10, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=15, linetype="dashed", color="gray55") +
+  ##bar graph
+  geom_bar(data=prwi_habitat[!(prwi_habitat$MonitoringLocationName=="Boneyard Run" | prwi_habitat$MonitoringLocationName=="South Fork Quantico Creek" | prwi_habitat$MonitoringLocationName=="Sow Run"),], aes(x=as.factor(x.axis), y=value, fill=as.factor(year)), 
+           color="black", width=0.7, size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white")) +
+  new_scale_fill() +
+  new_scale_colour() +
+  ##BONE, SFQC, SORU
+  geom_bar(data=prwi_habitat[(prwi_habitat$MonitoringLocationName=="Boneyard Run" | prwi_habitat$MonitoringLocationName=="South Fork Quantico Creek" | prwi_habitat$MonitoringLocationName=="Sow Run"),], aes(x=as.factor(x.axis), y=value, fill=as.factor(year),
+                                color=is_embed), width=0.35, size=0.8, 
+           position=position_nudge(0.18), stat="identity") +
+  scale_fill_manual(name="Year", values=c("white"), guide="none") +
+  scale_color_manual(values=c("black", "#00000000"), guide="none") +
+  ##facet grid
+  facet_wrap2(.~MonitoringLocationName, axes="all", remove_labels="y",
+              strip=strip_split("bottom")) +
+  scale_x_discrete(labels=c("Epifaunal", "Instream", "Pool", "Riffle", "Velocity"),
+                   guide=guide_axis(angle = 40)) +
+  ##labels
+  xlab("Stream") +
+  ylab("Score") +
+  ##setting graph boundaries
+  coord_cartesian(ylim=c(0, 20), xlim=c(0.3, 5.7), clip="off", expand=F) +
+  ###
+  at_panel(annotate("text", x = -0.3, y = 2.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 7.5, angle = 90, vjust = 0,
+           label = "Marginal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 12.5, angle = 90, vjust = 0,
+           label = "Suboptimal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 17.5, angle = 90, vjust = 0,
+           label = "Optimal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  ###
+  at_panel(annotate("text", x = -0.3, y = 2.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=4, fontface="italic"), PANEL %in% 4) +
+  at_panel(annotate("text", x = -0.3, y = 7.5, angle = 90, vjust = 0,
+           label = "Marginal", color = "black", size=4, fontface="italic"), PANEL %in% 4) +
+  at_panel(annotate("text", x = -0.3, y = 12.5, angle = 90, vjust = 0,
+           label = "Suboptimal", color = "black", size=4, fontface="italic"), PANEL %in% 4) +
+  at_panel(annotate("text", x = -0.3, y = 17.5, angle = 90, vjust = 0,
+           label = "Optimal", color = "black", size=4, fontface="italic"), PANEL %in% 4) +
+  ###
+  at_panel(annotate("text", x = -0.3, y = 2.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=4, fontface="italic"), PANEL %in% 7) +
+  at_panel(annotate("text", x = -0.3, y = 7.5, angle = 90, vjust = 0,
+           label = "Marginal", color = "black", size=4, fontface="italic"), PANEL %in% 7) +
+  at_panel(annotate("text", x = -0.3, y = 12.5, angle = 90, vjust = 0,
+           label = "Suboptimal", color = "black", size=4, fontface="italic"), PANEL %in% 7) +
+  at_panel(annotate("text", x = -0.3, y = 17.5, angle = 90, vjust = 0,
+           label = "Optimal", color = "black", size=4, fontface="italic"), PANEL %in% 7) +
+  ##repeating y axis label
+  at_panel(annotate("text", x = -0.75, y = 10, angle = 90, vjust = 0,
+           label = "Score", color = "black", size=7), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.75, y = 10, angle = 90, vjust = 0,
+           label = "Score", color = "black", size=7), PANEL %in% 7) +
+  ##theme
+  theme_bw(base_size=15) +
+  theme(strip.placement="outside",
+        axis.text.y=element_text(size=12),
+        axis.text.x=element_text(size=12),
+        axis.title.y = element_text(size=20, vjust=7),
+        axis.title.x=element_text(size=20, vjust=-0.75), 
+        strip.text = element_text(size=12),
+        plot.margin=margin(t = 0.5, r = 1, b = 0.5, l = 1.5, unit = "cm"),
+        panel.spacing=unit(2, "lines"))
+
+prwi_habitat_graph
+
+```
+
+PRWI embed graph
+```{r}
+prwi_embed <- prwi %>%
+  subset(characteristic=="embed") %>%
+  mutate(x.axis=case_when(MonitoringLocationName=="Boneyard Run" ~ 1,
+                          MonitoringLocationName=="Carters Run" ~ 2,
+                          MonitoringLocationName=="Mary Byrd Branch" ~ 3,
+                          MonitoringLocationName=="Mawavi Run" ~ 4,
+                          MonitoringLocationName=="North Fork Quantico Creek" ~ 5,
+                          MonitoringLocationName=="Orenda Run" ~ 6,
+                          MonitoringLocationName=="South Fork Quantico Creek" ~ 7,
+                          MonitoringLocationName=="Sow Run" ~ 8,
+                          MonitoringLocationName=="Taylor Run" ~ 9)) %>%
+  mutate(value2=100-value)
+
+prwi_embed_graph <- ggplot() +
+  ##background regions
+  annotate("rect", xmin=0.1, xmax=9.6, ymin=45, ymax=100, fill="#7dc7ff", alpha=0.5) +
+  annotate("rect", xmin=0.1, xmax=9.6, ymin=0, ymax=45, fill="#f27c7e", alpha=0.5) +
+  ##threshold line
+  geom_hline(yintercept=45, linetype="dashed", color="gray55") +
+  ##bar graph
+  geom_bar(data=prwi_embed[(prwi_embed$MonitoringLocationName=="Boneyard Run"),], aes(x=as.factor(x.axis), y=value2, fill=as.factor(year)), color="black", width=0.35, size=0.8, 
+           position=position_nudge(0.18), stat="identity") +
+  scale_fill_manual(name="Year", values=c("white", "gray60"), guide="none") +
+  new_scale_fill() +
+  new_scale_colour() +
+  geom_bar(data=prwi_embed[!(prwi_embed$MonitoringLocationName=="Boneyard Run" | prwi_embed$MonitoringLocationName=="South Fork Quantico Creek" | prwi_embed$MonitoringLocationName=="Sow Run" | prwi_embed$MonitoringLocationName=="Taylor Run"),], aes(x=as.factor(x.axis), y=value2, fill=as.factor(year)), 
+           color="black", width=0.7, size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white")) +
+  new_scale_fill() +
+  new_scale_colour() +
+  ##BONE, SFQC, SORU
+  geom_bar(data=prwi_embed[(prwi_embed$MonitoringLocationName=="South Fork Quantico Creek" | prwi_embed$MonitoringLocationName=="Sow Run"),], aes(x=as.factor(x.axis), y=value2, fill=as.factor(year)), color="black", width=0.35, size=0.8, 
+           position=position_nudge(0.18), stat="identity") +
+  scale_fill_manual(name="Year", values=c("white", "gray60"), guide="none") +
+  new_scale_fill() +
+  new_scale_colour() +
+  ##BONE, SFQC, SORU
+  geom_bar(data=prwi_embed[(prwi_embed$MonitoringLocationName=="Taylor Run"),], aes(x=as.factor(x.axis), y=value2, fill=as.factor(year)), color="black", width=0.7, size=0.8, 
+           position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white"), guide="none") +
+  scale_x_discrete(labels=c("Boneyard Run", "Carters Run", "Mary Byrd\nBranch",
+                            "Mawavi Run", "North Fork\nQuantico Creek",
+                            "Orenda Run", "South Fork\nQuantico Creek",
+                            "Sow Run", "Taylor Run"),
+                   guide=guide_axis(angle=40)) +
+  scale_y_continuous(labels=c(100, 75, 50, 25, 0)) +
+  ##labels
+  xlab("Stream") +
+  ylab("Embeddedness (%)") +
+  ##setting graph boundaries
+  coord_cartesian(ylim=c(0, 100), xlim=c(0.1, 9.6), clip="off", expand=F) +
+  ##score category labels
+  annotate("text", x = 0.45, y = 22.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=5, fontface="italic") +
+  annotate("text", x = 0.45, y = 72.5, angle = 90, vjust = 0,
+           label = "Minimally impaired", color = "black", size=5, fontface="italic") +
+  ##theme
+  theme_bw(base_size=15) +
+  theme(axis.text.y=element_text(size=12),
+        axis.text.x=element_text(size=12),
+        axis.title.y = element_text(size=20, vjust=3), 
+        axis.title.x=element_text(size=20, vjust=-0.75),
+        plot.margin=margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+prwi_embed_graph
+
+```
+
+
+ANTI habitat graph
+```{r}
+anti <- sph %>%
+  subset(Park=="ANTI" & (year==2013 | year==2022) & month>3) %>%
+  mutate(CharacteristicName=case_when(CharacteristicName=="embeddedness - percentage of rocks (gravel, cobble, boulders) covered by sediment (sand, silt)" ~ "embed",
+                   CharacteristicName=="habitat quality - riffle" ~ "riffle",
+                   CharacteristicName=="habitat quality - pool, glide, eddy" ~ "pool",
+                   CharacteristicName=="habitat quality - water velocity and depth" ~ "velocity_depth",
+                   CharacteristicName=="habitat quality - epifaunal substrate" ~ "epifaun",
+                   CharacteristicName=="habitat quality - instream habitat" ~ "instream")) 
+
+colnames(anti)[5:6]=c("characteristic", "value")
+
+anti <- exceed(anti)
+
+
+anti_habitat <- anti %>%
+  filter(!characteristic=="embed") %>%
+  mutate(x.axis=case_when(characteristic=="epifaun" ~ 1,
+                          characteristic=="instream" ~ 2,
+                          characteristic=="pool" ~ 3,
+                          characteristic=="riffle" ~ 4,
+                          characteristic=="velocity_depth" ~ 5))
+
+anti_habitat_graph <- ggplot() +
+  ##background regions
+  annotate("rect", xmin=0, xmax=5.7, ymin=15, ymax=20, fill="#7dc7ff", alpha=0.5) +
+  annotate("rect", xmin=0, xmax=5.7, ymin=10, ymax=15, fill="#8ba7d6", alpha=0.5) +
+  annotate("rect", xmin=0, xmax=5.7, ymin=5, ymax=10, fill="#cf93b6", alpha=0.5) +
+  annotate("rect", xmin=0, xmax=5.7, ymin=0, ymax=5, fill="#f27c7e", alpha=0.5) +
+  ##threshold lines
+  geom_hline(yintercept=5, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=10, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=15, linetype="dashed", color="gray55") +
+  ##bar graph
+  geom_bar(data=anti_habitat, aes(x=as.factor(x.axis), y=value, fill=as.factor(year)), 
+           color="black", width=0.7, size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white")) +
+  scale_x_discrete(labels=c("Epifaunal", "Instream", "Pool", "Riffle", "Velocity"),
+                   guide=guide_axis(angle = 40)) +
+  ##labels
+  xlab("Characteristic") +
+  ylab("Score") +
+  ##setting graph boundaries
+  coord_cartesian(ylim=c(0, 20), xlim=c(0, 5.7), clip="off", expand=F) +
+  ##habitat quality color scale
+  annotate("text", x = 0.3, y = 2.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=4, fontface="italic") +
+  annotate("text", x = 0.3, y = 7.5, angle = 90, vjust = 0,
+           label = "Marginal", color = "black", size=4, fontface="italic") +
+  annotate("text", x = 0.3, y = 12.5, angle = 90, vjust = 0,
+           label = "Suboptimal", color = "black", size=4, fontface="italic") +
+  annotate("text", x = 0.3, y = 17.5, angle = 90, vjust = 0,
+           label = "Optimal", color = "black", size=4, fontface="italic") +
+  ##theme
+  theme_bw(base_size=15) +
+  theme(strip.placement="outside",
+        axis.text.y=element_text(size=12),
+        axis.text.x=element_text(size=14),
+        axis.title.y = element_text(size=20),
+        axis.title.x=element_text(size=20, vjust=-0.75), 
+        strip.text = element_text(size=15),
+        plot.margin=margin(t = 0.5, r = 1, b = 0.5, l = 1.5, unit = "cm"),
+        panel.spacing=unit(2, "lines"))
+
+anti_habitat_graph
+
+```
+
+ANTI embed graph
+```{r}
+anti_embed <- anti %>%
+  subset(characteristic=="embed") %>%
+  mutate(x.axis=case_when(MonitoringLocationName=="Sharpsburg Creek" ~ 1)) %>%
+  mutate(value2=100-value)
+
+anti_embed_graph <- ggplot() +
+  ##background regions
+  annotate("rect", xmin=0.4, xmax=1.6, ymin=45, ymax=100, fill="#7dc7ff", alpha=0.5) +
+  annotate("rect", xmin=0.4, xmax=1.6, ymin=0, ymax=45, fill="#f27c7e", alpha=0.5) +
+  ##threshold line
+  geom_hline(yintercept=45, linetype="dashed", color="gray55") +
+  ##bar graph
+  geom_bar(data=anti_embed, aes(x=as.factor(x.axis), y=value2, fill=as.factor(year)), 
+           color="black", width=0.7, size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white")) +
+  scale_x_discrete(labels=c("")) +
+  scale_y_continuous(labels=c(100, 75, 50, 25, 0)) +
+  ##labels
+  xlab("Sharpsburg Creek") +
+  ylab("Embeddedness (%)") +
+  ##setting graph boundaries
+  coord_cartesian(ylim=c(0, 100), xlim=c(0.4, 1.6), clip="off", expand=F) +
+  ##score category labels
+  annotate("text", x = 0.55, y = 22.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=5, fontface="italic") +
+  annotate("text", x = 0.55, y = 72.5, angle = 90, vjust = 0,
+           label = "Minimally impaired", color = "black", size=5, fontface="italic") +
+  ##theme
+  theme_bw(base_size=15) +
+  theme(axis.text.y=element_text(size=12),
+        axis.text.x=element_text(size=12),
+        axis.title.y = element_text(size=20, vjust=3), 
+        axis.title.x=element_text(size=15, vjust=4),
+        axis.ticks.x = element_blank(),
+        plot.margin=margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+anti_embed_graph
+
+```
+
+
+GWMP habitat graph
+```{r}
+gwmp <- sph %>%
+  subset(Park=="GWMP" & (year==2009 | year==2012 | year==2022) & month>4) %>%
+  mutate(CharacteristicName=case_when(CharacteristicName=="embeddedness - percentage of rocks (gravel, cobble, boulders) covered by sediment (sand, silt)" ~ "embed",
+                   CharacteristicName=="habitat quality - riffle" ~ "riffle",
+                   CharacteristicName=="habitat quality - pool, glide, eddy" ~ "pool",
+                   CharacteristicName=="habitat quality - water velocity and depth" ~ "velocity_depth",
+                   CharacteristicName=="habitat quality - epifaunal substrate" ~ "epifaun",
+                   CharacteristicName=="habitat quality - instream habitat" ~ "instream")) %>%
+  mutate(year2=case_when(year==2009~2012,
+                         year!=2009~year)) %>%
+  mutate(name2=case_when(MonitoringLocationName=="Minnehaha Creek"~"Minnehaha Creek*",
+                         MonitoringLocationName!="Minnehaha Creek"~MonitoringLocationName))
+
+colnames(gwmp)[5:6]=c("characteristic", "value")
+
+gwmp <- exceed(gwmp)
+
+
+gwmp_habitat <- gwmp %>%
+  filter(!characteristic=="embed") %>%
+  mutate(x.axis=case_when(characteristic=="epifaun" ~ 1,
+                          characteristic=="instream" ~ 2,
+                          characteristic=="pool" ~ 3,
+                          characteristic=="riffle" ~ 4,
+                          characteristic=="velocity_depth" ~ 5))
+
+gwmp_habitat_graph <- ggplot() +
+  ##background regions
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=15, ymax=20, fill="#7dc7ff", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=10, ymax=15, fill="#8ba7d6", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=5, ymax=10, fill="#cf93b6", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=0, ymax=5, fill="#f27c7e", alpha=0.5) +
+  ##threshold lines
+  geom_hline(yintercept=5, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=10, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=15, linetype="dashed", color="gray55") +
+  ##bar graph
+  geom_bar(data=gwmp_habitat, aes(x=as.factor(x.axis), y=value, fill=as.factor(year2)), 
+           color="black", width=0.7, size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white"), 
+                    labels=c("2012, *09", "2022")) +
+  ##facet grid
+  facet_wrap2(.~name2, axes="all", remove_labels="y",
+              strip=strip_split("bottom")) +
+  scale_x_discrete(labels=c("Epifaunal", "Instream", "Pool", "Riffle", "Velocity"),
+                   guide=guide_axis(angle = 40)) +
+  ##labels
+  xlab("Stream") +
+  ylab("Score") +
+  ##setting graph boundaries
+  coord_cartesian(ylim=c(0, 20), xlim=c(0.3, 5.7), clip="off", expand=F) +
+  ##habitat quality color scale
+  at_panel(annotate("text", x = -0.3, y = 2.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 7.5, angle = 90, vjust = 0,
+           label = "Marginal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 12.5, angle = 90, vjust = 0,
+           label = "Suboptimal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 17.5, angle = 90, vjust = 0,
+           label = "Optimal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 2.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=4, fontface="italic"), PANEL %in% 3) +
+  at_panel(annotate("text", x = -0.3, y = 7.5, angle = 90, vjust = 0,
+           label = "Marginal", color = "black", size=4, fontface="italic"), PANEL %in% 3) +
+  at_panel(annotate("text", x = -0.3, y = 12.5, angle = 90, vjust = 0,
+           label = "Suboptimal", color = "black", size=4, fontface="italic"), PANEL %in% 3) +
+  at_panel(annotate("text", x = -0.3, y = 17.5, angle = 90, vjust = 0,
+           label = "Optimal", color = "black", size=4, fontface="italic"), PANEL %in% 3) +
+  ##theme
+  theme_bw(base_size=15) +
+  theme(strip.placement="outside",
+        axis.text.y=element_text(size=12),
+        axis.text.x=element_text(size=10),
+        axis.title.y = element_text(size=20, vjust=7),
+        axis.title.x=element_text(size=20, vjust=-0.75), 
+        strip.text = element_text(size=15),
+        plot.margin=margin(t = 0.5, r = 1, b = 0.5, l = 1.5, unit = "cm"),
+        panel.spacing=unit(2, "lines"))
+
+gwmp_habitat_graph
+
+```
+
+GWMP embed graph
+```{r}
+gwmp_embed <- gwmp %>%
+  subset(characteristic=="embed") %>%
+  mutate(x.axis=case_when(MonitoringLocationName=="Mine Run" ~ 1,
+                          MonitoringLocationName=="Minnehaha Creek" ~ 2,
+                          MonitoringLocationName=="Pimmit Run" ~ 3,
+                          MonitoringLocationName=="Turkey Run"~4)) %>%
+  mutate(value2=100-value)
+
+gwmp_embed_graph <- ggplot() +
+  ##background regions
+  annotate("rect", xmin=0.1, xmax=4.6, ymin=45, ymax=100, fill="#7dc7ff", alpha=0.5) +
+  annotate("rect", xmin=0.1, xmax=4.6, ymin=0, ymax=45, fill="#f27c7e", alpha=0.5) +
+  ##threshold line
+  geom_hline(yintercept=45, linetype="dashed", color="gray55") +
+  ##bar graph
+  geom_bar(data=gwmp_embed, aes(x=as.factor(x.axis), y=value2, fill=as.factor(year2)), 
+           color="black", width=0.7, size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white"),
+                    labels=c("2012, *09", "2022")) +
+  scale_x_discrete(labels=c("Mine Run", "Minnehaha\nCreek*", "Pimmit Run", "Turkey Run"), guide=guide_axis(angle = 40)) +
+  scale_y_continuous(labels=c(100, 75, 50, 25, 0)) +
+  ##labels
+  xlab("Stream") +
+  ylab("Embeddedness (%)") +
+  ##setting graph boundaries
+  coord_cartesian(ylim=c(0, 100), xlim=c(0.1, 4.6), clip="off", expand=F) +
+  ##score category labels
+  annotate("text", x = 0.45, y = 22.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=5, fontface="italic") +
+  annotate("text", x = 0.45, y = 72.5, angle = 90, vjust = 0,
+           label = "Minimally impaired", color = "black", size=5, fontface="italic") +
+  ##theme
+  theme_bw(base_size=15) +
+  theme(axis.text.y=element_text(size=12),
+        axis.text.x=element_text(size=12),
+        axis.title.y = element_text(size=20, vjust=3), 
+        axis.title.x=element_text(size=20, vjust=-0.75),
+        plot.margin=margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+gwmp_embed_graph
+
+```
+
+
+HAFE habitat graph
+```{r}
+hafe <- sph %>%
+  subset(Park=="HAFE" & (year==2013 | year==2022) & month>3) %>%
+  mutate(CharacteristicName=case_when(CharacteristicName=="embeddedness - percentage of rocks (gravel, cobble, boulders) covered by sediment (sand, silt)" ~ "embed",
+                   CharacteristicName=="habitat quality - riffle" ~ "riffle",
+                   CharacteristicName=="habitat quality - pool, glide, eddy" ~ "pool",
+                   CharacteristicName=="habitat quality - water velocity and depth" ~ "velocity_depth",
+                   CharacteristicName=="habitat quality - epifaunal substrate" ~ "epifaun",
+                   CharacteristicName=="habitat quality - instream habitat" ~ "instream")) 
+
+colnames(hafe)[5:6]=c("characteristic", "value")
+
+hafe <- exceed(hafe)
+
+
+hafe_habitat <- hafe %>%
+  filter(!characteristic=="embed") %>%
+  mutate(x.axis=case_when(characteristic=="epifaun" ~ 1,
+                          characteristic=="instream" ~ 2,
+                          characteristic=="pool" ~ 3,
+                          characteristic=="riffle" ~ 4,
+                          characteristic=="velocity_depth" ~ 5))
+
+hafe_habitat_graph <- ggplot() +
+  ##background regions
+  annotate("rect", xmin=0, xmax=5.7, ymin=15, ymax=20, fill="#7dc7ff", alpha=0.5) +
+  annotate("rect", xmin=0, xmax=5.7, ymin=10, ymax=15, fill="#8ba7d6", alpha=0.5) +
+  annotate("rect", xmin=0, xmax=5.7, ymin=5, ymax=10, fill="#cf93b6", alpha=0.5) +
+  annotate("rect", xmin=0, xmax=5.7, ymin=0, ymax=5, fill="#f27c7e", alpha=0.5) +
+  ##threshold lines
+  geom_hline(yintercept=5, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=10, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=15, linetype="dashed", color="gray55") +
+  ##bar graph
+  geom_bar(data=hafe_habitat, aes(x=as.factor(x.axis), y=value, fill=as.factor(year)), 
+           color="black", width=0.7, size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white")) +
+  scale_x_discrete(labels=c("Epifaunal", "Instream", "Pool", "Riffle", "Velocity"),
+                   guide=guide_axis(angle = 40)) +
+  ##labels
+  xlab("Characteristic") +
+  ylab("Score") +
+  ##setting graph boundaries
+  coord_cartesian(ylim=c(0, 20), xlim=c(0, 5.7), clip="off", expand=F) +
+  ##habitat quality color scale
+  annotate("text", x = 0.3, y = 2.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=4, fontface="italic") +
+  annotate("text", x = 0.3, y = 7.5, angle = 90, vjust = 0,
+           label = "Marginal", color = "black", size=4, fontface="italic") +
+  annotate("text", x = 0.3, y = 12.5, angle = 90, vjust = 0,
+           label = "Suboptimal", color = "black", size=4, fontface="italic") +
+  annotate("text", x = 0.3, y = 17.5, angle = 90, vjust = 0,
+           label = "Optimal", color = "black", size=4, fontface="italic") +
+  ##theme
+  theme_bw(base_size=15) +
+  theme(strip.placement="outside",
+        axis.text.y=element_text(size=12),
+        axis.text.x=element_text(size=14),
+        axis.title.y = element_text(size=20),
+        axis.title.x=element_text(size=20, vjust=-0.75), 
+        strip.text = element_text(size=15),
+        plot.margin=margin(t = 0.5, r = 1, b = 0.5, l = 1.5, unit = "cm"),
+        panel.spacing=unit(2, "lines"))
+
+hafe_habitat_graph
+
+```
+
+HAFE embed graph
+```{r}
+hafe_embed <- hafe %>%
+  subset(characteristic=="embed") %>%
+  mutate(x.axis=case_when(MonitoringLocationName=="Sharpsburg Creek" ~ 1)) %>%
+  mutate(value2=100-value)
+
+hafe_embed_graph <- ggplot() +
+  ##background regions
+  annotate("rect", xmin=0.4, xmax=1.6, ymin=45, ymax=100, fill="#7dc7ff", alpha=0.5) +
+  annotate("rect", xmin=0.4, xmax=1.6, ymin=0, ymax=45, fill="#f27c7e", alpha=0.5) +
+  ##threshold line
+  geom_hline(yintercept=45, linetype="dashed", color="gray55") +
+  ##bar graph
+  geom_bar(data=hafe_embed, aes(x=as.factor(x.axis), y=value2, fill=as.factor(year)), 
+           color="black", width=0.7, size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white")) +
+  scale_x_discrete(labels=c("")) +
+  scale_y_continuous(labels=c(100, 75, 50, 25, 0)) +
+  ##labels
+  xlab("Flowing Springs Run") +
+  ylab("Embeddedness (%)") +
+  ##setting graph boundaries
+  coord_cartesian(ylim=c(0, 100), xlim=c(0.4, 1.6), clip="off", expand=F) +
+  ##score category labels
+  annotate("text", x = 0.55, y = 22.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=5, fontface="italic") +
+  annotate("text", x = 0.55, y = 72.5, angle = 90, vjust = 0,
+           label = "Minimally impaired", color = "black", size=5, fontface="italic") +
+  ##theme
+  theme_bw(base_size=15) +
+  theme(axis.text.y=element_text(size=12),
+        axis.text.x=element_text(size=12),
+        axis.title.y = element_text(size=20, vjust=3), 
+        axis.title.x=element_text(size=15, vjust=4),
+        axis.ticks.x = element_blank(),
+        plot.margin=margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+hafe_embed_graph
+
+```
+
+
+MANA habitat graph
+```{r}
+mana <- sph %>%
+  subset(Park=="MANA" & (year==2010 | year==2022) & month>4) %>%
+  mutate(CharacteristicName=case_when(CharacteristicName=="embeddedness - percentage of rocks (gravel, cobble, boulders) covered by sediment (sand, silt)" ~ "embed",
+                   CharacteristicName=="habitat quality - riffle" ~ "riffle",
+                   CharacteristicName=="habitat quality - pool, glide, eddy" ~ "pool",
+                   CharacteristicName=="habitat quality - water velocity and depth" ~ "velocity_depth",
+                   CharacteristicName=="habitat quality - epifaunal substrate" ~ "epifaun",
+                   CharacteristicName=="habitat quality - instream habitat" ~ "instream")) 
+
+colnames(mana)[5:6]=c("characteristic", "value")
+
+mana <- exceed(mana)
+
+
+mana_habitat <- mana %>%
+  filter(!characteristic=="embed") %>%
+  mutate(x.axis=case_when(characteristic=="epifaun" ~ 1,
+                          characteristic=="instream" ~ 2,
+                          characteristic=="pool" ~ 3,
+                          characteristic=="riffle" ~ 4,
+                          characteristic=="velocity_depth" ~ 5))
+
+mana_habitat_graph <- ggplot() +
+  ##background regions
+  annotate("rect", xmin=0, xmax=5.7, ymin=15, ymax=20, fill="#7dc7ff", alpha=0.5) +
+  annotate("rect", xmin=0, xmax=5.7, ymin=10, ymax=15, fill="#8ba7d6", alpha=0.5) +
+  annotate("rect", xmin=0, xmax=5.7, ymin=5, ymax=10, fill="#cf93b6", alpha=0.5) +
+  annotate("rect", xmin=0, xmax=5.7, ymin=0, ymax=5, fill="#f27c7e", alpha=0.5) +
+  ##threshold lines
+  geom_hline(yintercept=5, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=10, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=15, linetype="dashed", color="gray55") +
+  ##bar graph
+  geom_bar(data=mana_habitat, aes(x=as.factor(x.axis), y=value, fill=as.factor(year)), 
+           color="black", width=0.7, size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white")) +
+  scale_x_discrete(labels=c("Epifaunal", "Instream", "Pool", "Riffle", "Velocity"),
+                   guide=guide_axis(angle = 40)) +
+  ##labels
+  xlab("Characteristic") +
+  ylab("Score") +
+  ##setting graph boundaries
+  coord_cartesian(ylim=c(0, 20), xlim=c(0, 5.7), clip="off", expand=F) +
+  ##habitat quality color scale
+  annotate("text", x = 0.3, y = 2.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=4, fontface="italic") +
+  annotate("text", x = 0.3, y = 7.5, angle = 90, vjust = 0,
+           label = "Marginal", color = "black", size=4, fontface="italic") +
+  annotate("text", x = 0.3, y = 12.5, angle = 90, vjust = 0,
+           label = "Suboptimal", color = "black", size=4, fontface="italic") +
+  annotate("text", x = 0.3, y = 17.5, angle = 90, vjust = 0,
+           label = "Optimal", color = "black", size=4, fontface="italic") +
+  ##theme
+  theme_bw(base_size=15) +
+  theme(strip.placement="outside",
+        axis.text.y=element_text(size=12),
+        axis.text.x=element_text(size=14),
+        axis.title.y = element_text(size=20),
+        axis.title.x=element_text(size=20, vjust=-0.75), 
+        strip.text = element_text(size=15),
+        plot.margin=margin(t = 0.5, r = 1, b = 0.5, l = 1.5, unit = "cm"),
+        panel.spacing=unit(2, "lines"))
+
+mana_habitat_graph
+
+```
+
+MANA embed graph
+```{r}
+mana_embed <- mana %>%
+  subset(characteristic=="embed") %>%
+  mutate(x.axis=case_when(MonitoringLocationName=="Youngs Branch" ~ 1)) %>%
+  mutate(value2=100-value)
+
+mana_embed_graph <- ggplot() +
+  ##background regions
+  annotate("rect", xmin=0.4, xmax=1.6, ymin=45, ymax=100, fill="#7dc7ff", alpha=0.5) +
+  annotate("rect", xmin=0.4, xmax=1.6, ymin=0, ymax=45, fill="#f27c7e", alpha=0.5) +
+  ##threshold line
+  geom_hline(yintercept=45, linetype="dashed", color="gray55") +
+  ##bar graph
+  geom_bar(data=mana_embed, aes(x=as.factor(x.axis), y=value2, fill=as.factor(year)), 
+           color="black", width=0.7, size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white")) +
+  scale_x_discrete(labels=c("")) +
+  scale_y_continuous(labels=c(100, 75, 50, 25, 0)) +
+  ##labels
+  xlab("Young's Branch") +
+  ylab("Embeddedness (%)") +
+  ##setting graph boundaries
+  coord_cartesian(ylim=c(0, 100), xlim=c(0.4, 1.6), clip="off", expand=F) +
+  ##score category labels
+  annotate("text", x = 0.55, y = 22.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=5, fontface="italic") +
+  annotate("text", x = 0.55, y = 72.5, angle = 90, vjust = 0,
+           label = "Minimally impaired", color = "black", size=5, fontface="italic") +
+  ##theme
+  theme_bw(base_size=15) +
+  theme(axis.text.y=element_text(size=12),
+        axis.text.x=element_text(size=12),
+        axis.title.y = element_text(size=20, vjust=3), 
+        axis.title.x=element_text(size=15, vjust=4),
+        axis.ticks.x = element_blank(),
+        plot.margin=margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+mana_embed_graph
+
+```
+
+
+MONO habitat graph
+```{r}
+mono <- sph %>%
+  subset(Park=="MONO" & (year==2010 | year==2022) & month>4) %>%
+  mutate(CharacteristicName=case_when(CharacteristicName=="embeddedness - percentage of rocks (gravel, cobble, boulders) covered by sediment (sand, silt)" ~ "embed",
+                   CharacteristicName=="habitat quality - riffle" ~ "riffle",
+                   CharacteristicName=="habitat quality - pool, glide, eddy" ~ "pool",
+                   CharacteristicName=="habitat quality - water velocity and depth" ~ "velocity_depth",
+                   CharacteristicName=="habitat quality - epifaunal substrate" ~ "epifaun",
+                   CharacteristicName=="habitat quality - instream habitat" ~ "instream")) 
+
+colnames(mono)[5:6]=c("characteristic", "value")
+
+mono <- exceed(mono)
+
+
+mono_habitat <- mono %>%
+  filter(!characteristic=="embed") %>%
+  mutate(x.axis=case_when(characteristic=="epifaun" ~ 1,
+                          characteristic=="instream" ~ 2,
+                          characteristic=="pool" ~ 3,
+                          characteristic=="riffle" ~ 4,
+                          characteristic=="velocity_depth" ~ 5))
+
+mono_habitat_graph <- ggplot() +
+  ##background regions
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=15, ymax=20, fill="#7dc7ff", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=10, ymax=15, fill="#8ba7d6", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=5, ymax=10, fill="#cf93b6", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=0, ymax=5, fill="#f27c7e", alpha=0.5) +
+  ##threshold lines
+  geom_hline(yintercept=5, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=10, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=15, linetype="dashed", color="gray55") +
+  ##bar graph
+  geom_bar(data=mono_habitat, aes(x=as.factor(x.axis), y=value, fill=as.factor(year)), 
+           color="black", width=0.7, size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white"), 
+                    labels=c("2010", "2022")) +
+  ##facet grid
+  facet_wrap2(.~MonitoringLocationName, axes="all", remove_labels="y",
+              strip=strip_split("bottom")) +
+  scale_x_discrete(labels=c("Epifaunal", "Instream", "Pool", "Riffle", "Velocity"),
+                   guide=guide_axis(angle = 40)) +
+  ##labels
+  xlab("Stream") +
+  ylab("Score") +
+  ##setting graph boundaries
+  coord_cartesian(ylim=c(0, 20), xlim=c(0.3, 5.7), clip="off", expand=F) +
+  ##habitat quality color scale
+  at_panel(annotate("text", x = -0.3, y = 2.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 7.5, angle = 90, vjust = 0,
+           label = "Marginal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 12.5, angle = 90, vjust = 0,
+           label = "Suboptimal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 17.5, angle = 90, vjust = 0,
+           label = "Optimal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 2.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=4, fontface="italic"), PANEL %in% 3) +
+  at_panel(annotate("text", x = -0.3, y = 7.5, angle = 90, vjust = 0,
+           label = "Marginal", color = "black", size=4, fontface="italic"), PANEL %in% 3) +
+  at_panel(annotate("text", x = -0.3, y = 12.5, angle = 90, vjust = 0,
+           label = "Suboptimal", color = "black", size=4, fontface="italic"), PANEL %in% 3) +
+  at_panel(annotate("text", x = -0.3, y = 17.5, angle = 90, vjust = 0,
+           label = "Optimal", color = "black", size=4, fontface="italic"), PANEL %in% 3) +
+  ##theme
+  theme_bw(base_size=15) +
+  theme(strip.placement="outside",
+        axis.text.y=element_text(size=12),
+        axis.text.x=element_text(size=10),
+        axis.title.y = element_text(size=20, vjust=7),
+        axis.title.x=element_text(size=20, vjust=-0.75), 
+        strip.text = element_text(size=15),
+        plot.margin=margin(t = 0.5, r = 1, b = 0.5, l = 1.5, unit = "cm"),
+        panel.spacing=unit(2, "lines"))
+
+mono_habitat_graph
+
+```
+
+MONO embed graph
+```{r}
+mono_embed <- mono %>%
+  subset(characteristic=="embed") %>%
+  mutate(x.axis=case_when(MonitoringLocationName=="Bush Creek" ~ 1,
+                          MonitoringLocationName=="Gambrill Mill Creek" ~ 2)) %>%
+  mutate(value2=100-value)
+
+mono_embed_graph <- ggplot() +
+  ##background regions
+  annotate("rect", xmin=0.3, xmax=2.6, ymin=45, ymax=100, fill="#7dc7ff", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=2.6, ymin=0, ymax=45, fill="#f27c7e", alpha=0.5) +
+  ##threshold line
+  geom_hline(yintercept=45, linetype="dashed", color="gray55") +
+  ##bar graph
+  geom_bar(data=mono_embed, aes(x=as.factor(x.axis), y=value2, fill=as.factor(year)), 
+           color="black", width=0.7, size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white"),
+                    labels=c("2010", "2022")) +
+  scale_x_discrete(labels=c("Bush Creek", "Gambrill\nMill Creek")) +
+  scale_y_continuous(labels=c(100, 75, 50, 25, 0)) +
+  ##labels
+  xlab("Stream") +
+  ylab("Embeddedness (%)") +
+  ##setting graph boundaries
+  coord_cartesian(ylim=c(0, 100), xlim=c(0.3, 2.6), clip="off", expand=F) +
+  ##score category labels
+  annotate("text", x = 0.5, y = 22.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=5, fontface="italic") +
+  annotate("text", x = 0.5, y = 72.5, angle = 90, vjust = 0,
+           label = "Minimally impaired", color = "black", size=5, fontface="italic") +
+  ##theme
+  theme_bw(base_size=15) +
+  theme(axis.text.y=element_text(size=12),
+        axis.text.x=element_text(size=14),
+        axis.title.y = element_text(size=20, vjust=3), 
+        axis.title.x=element_text(size=20, vjust=-0.75),
+        plot.margin=margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+mono_embed_graph
+
+```
+
+
+NACE habitat graph
+```{r}
+nace <- sph %>%
+  subset(Park=="NACE" & (year==2013 | year==2022) & month>4) %>%
+  filter(!MonitoringLocationName=="Accokeek Creek tributary") %>%
+  mutate(CharacteristicName=case_when(CharacteristicName=="embeddedness - percentage of rocks (gravel, cobble, boulders) covered by sediment (sand, silt)" ~ "embed",
+                   CharacteristicName=="habitat quality - riffle" ~ "riffle",
+                   CharacteristicName=="habitat quality - pool, glide, eddy" ~ "pool",
+                   CharacteristicName=="habitat quality - water velocity and depth" ~ "velocity_depth",
+                   CharacteristicName=="habitat quality - epifaunal substrate" ~ "epifaun",
+                   CharacteristicName=="habitat quality - instream habitat" ~ "instream"))
+
+colnames(nace)[5:6]=c("characteristic", "value")
+
+nace <- exceed(nace)
+
+
+nace_habitat <- nace %>%
+  filter(!characteristic=="embed") %>%
+  mutate(x.axis=case_when(characteristic=="epifaun" ~ 1,
+                          characteristic=="instream" ~ 2,
+                          characteristic=="pool" ~ 3,
+                          characteristic=="riffle" ~ 4,
+                          characteristic=="velocity_depth" ~ 5))
+
+nace_habitat_graph <- ggplot() +
+  ##background regions
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=15, ymax=20, fill="#7dc7ff", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=10, ymax=15, fill="#8ba7d6", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=5, ymax=10, fill="#cf93b6", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=0, ymax=5, fill="#f27c7e", alpha=0.5) +
+  ##threshold lines
+  geom_hline(yintercept=5, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=10, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=15, linetype="dashed", color="gray55") +
+  ##bar graph
+  geom_bar(data=nace_habitat, aes(x=as.factor(x.axis), y=value, fill=as.factor(year)), 
+           color="black", width=0.7, size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white"), 
+                    labels=c("2013", "2022")) +
+  ##facet grid
+  facet_wrap2(.~MonitoringLocationName, axes="all", remove_labels="y",
+              strip=strip_split("bottom")) +
+  scale_x_discrete(labels=c("Epifaunal", "Instream", "Pool", "Riffle", "Velocity"),
+                   guide=guide_axis(angle = 40)) +
+  ##labels
+  xlab("Stream") +
+  ylab("Score") +
+  ##setting graph boundaries
+  coord_cartesian(ylim=c(0, 20), xlim=c(0.3, 5.7), clip="off", expand=F) +
+  ##habitat quality color scale
+  at_panel(annotate("text", x = -0.3, y = 2.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 7.5, angle = 90, vjust = 0,
+           label = "Marginal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 12.5, angle = 90, vjust = 0,
+           label = "Suboptimal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 17.5, angle = 90, vjust = 0,
+           label = "Optimal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  ##theme
+  theme_bw(base_size=15) +
+  theme(strip.placement="outside",
+        axis.text.y=element_text(size=12),
+        axis.text.x=element_text(size=10),
+        axis.title.y = element_text(size=20, vjust=7),
+        axis.title.x=element_text(size=20, vjust=-0.75), 
+        strip.text = element_text(size=15),
+        plot.margin=margin(t = 0.5, r = 1, b = 0.5, l = 1.5, unit = "cm"),
+        panel.spacing=unit(2, "lines"))
+
+nace_habitat_graph
+
+```
+
+NACE embed graph
+```{r}
+nace_embed <- nace %>%
+  subset(characteristic=="embed") %>%
+  mutate(x.axis=case_when(MonitoringLocationName=="Henson Creek" ~ 1,
+                          MonitoringLocationName=="Oxon Run" ~ 2,
+                          MonitoringLocationName=="Still Creek" ~ 3)) %>%
+  mutate(value2=100-value)
+
+nace_embed_graph <- ggplot() +
+  ##background regions
+  annotate("rect", xmin=0.1, xmax=3.6, ymin=45, ymax=100, fill="#7dc7ff", alpha=0.5) +
+  annotate("rect", xmin=0.1, xmax=3.6, ymin=0, ymax=45, fill="#f27c7e", alpha=0.5) +
+  ##threshold line
+  geom_hline(yintercept=45, linetype="dashed", color="gray55") +
+  ##bar graph
+  geom_bar(data=nace_embed, aes(x=as.factor(x.axis), y=value2, fill=as.factor(year)), 
+           color="black", width=0.7, size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white"),
+                    labels=c("2013", "2022")) +
+  scale_x_discrete(labels=c("Henson\nCreek", "Oxon\nRun", "Still\nCreek")) +
+  scale_y_continuous(labels=c(100, 75, 50, 25, 0)) +
+  ##labels
+  xlab("Stream") +
+  ylab("Embeddedness (%)") +
+  ##setting graph boundaries
+  coord_cartesian(ylim=c(0, 100), xlim=c(0.1, 3.6), clip="off", expand=F) +
+  ##score category labels
+  annotate("text", x = 0.45, y = 22.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=5, fontface="italic") +
+  annotate("text", x = 0.45, y = 72.5, angle = 90, vjust = 0,
+           label = "Minimally impaired", color = "black", size=5, fontface="italic") +
+  ##theme
+  theme_bw(base_size=15) +
+  theme(axis.text.y=element_text(size=12),
+        axis.text.x=element_text(size=12),
+        axis.title.y = element_text(size=20, vjust=3), 
+        axis.title.x=element_text(size=20, vjust=-0.75),
+        plot.margin=margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+nace_embed_graph
+
+```
+
+
+ROCR habitat graph
+```{r}
+rocr <- sph %>%
+  subset(Park=="ROCR" & (year==2008 | year==2009 | year==2019 | year==2022) & month>4) %>%
+  filter(!MonitoringLocationName=="Soapstone Valley Stream") %>%
+  mutate(CharacteristicName=case_when(CharacteristicName=="embeddedness - percentage of rocks (gravel, cobble, boulders) covered by sediment (sand, silt)" ~ "embed",
+                   CharacteristicName=="habitat quality - riffle" ~ "riffle",
+                   CharacteristicName=="habitat quality - pool, glide, eddy" ~ "pool",
+                   CharacteristicName=="habitat quality - water velocity and depth" ~ "velocity_depth",
+                   CharacteristicName=="habitat quality - epifaunal substrate" ~ "epifaun",
+                   CharacteristicName=="habitat quality - instream habitat" ~ "instream")) %>%
+  mutate(year2=case_when(year==2008~"year1",
+                         year==2009~"year1",
+                         year==2019~"year2",
+                         year==2022~"year2")) %>%
+  mutate(name2=case_when(Site=="BAKE"~"Battery Kemble Run*‡",
+                         Site=="BRBR"~"Broad Branch",
+                         Site=="DUOA"~"Dumbarton Oaks*",
+                         Site=="FEBR"~"Fenwick Branch",
+                         Site=="KLVA"~"Klingle Valley*",
+                         Site=="LUBR"~"Luzon Branch",
+                         Site=="NOST"~"Normanstone Branch*",
+                         Site=="PHBR"~"Pinehurst Branch",
+                         Site=="PYBR"~"Piney Branch*",
+                         Site=="R630"~"Reservation 630",
+                         Site=="ROC3"~"Rock Creek Downstream‡"))
+
+colnames(rocr)[5:6]=c("characteristic", "value")
+
+rocr <- exceed(rocr)
+
+
+rocr_habitat <- rocr %>%
+  filter(!characteristic=="embed") %>%
+  mutate(x.axis=case_when(characteristic=="epifaun" ~ 1,
+                          characteristic=="instream" ~ 2,
+                          characteristic=="pool" ~ 3,
+                          characteristic=="riffle" ~ 4,
+                          characteristic=="velocity_depth" ~ 5))
+
+rocr_habitat_graph <- ggplot() +
+  ##background regions
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=15, ymax=20, fill="#7dc7ff", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=10, ymax=15, fill="#8ba7d6", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=5, ymax=10, fill="#cf93b6", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=0, ymax=5, fill="#f27c7e", alpha=0.5) +
+  geom_hline(yintercept=5, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=10, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=15, linetype="dashed", color="gray55") +
+  ##bar graph
+  geom_bar(data=rocr_habitat[!rocr_habitat$Site=="ROC3",], aes(x=as.factor(x.axis), y=value, fill=year2), 
+           color="black", width=0.7, size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white"),
+                    labels=c("2008, *09", "2019, ‡22")) +
+  new_scale_fill() +
+  new_scale_colour() +
+  ##ROC3
+  geom_bar(data=rocr_habitat[(rocr_habitat$Site=="ROC3"),], aes(x=as.factor(x.axis), y=value, fill=as.factor(year),
+                                color=is_embed), width=0.35, size=0.8, 
+           position=position_nudge(0.18), stat="identity") +
+  scale_fill_manual(name="Year", values=c("white"), guide="none") +
+  scale_color_manual(values=c("black", "#00000000"), guide="none") +
+  ##facet grid
+  facet_wrap2(.~name2, axes="all", remove_labels="y",
+              strip=strip_split("bottom"), ncol=3) +
+  scale_x_discrete(labels=c("Epifaunal", "Instream", "Pool", "Riffle", "Velocity"),
+                   guide=guide_axis(angle = 40)) +
+  ##labels
+  xlab("Stream") +
+  ylab("") +
+  ##setting graph boundaries
+  coord_cartesian(ylim=c(0, 20), xlim=c(0.3, 5.7), clip="off", expand=F) +
+  ###
+  at_panel(annotate("text", x = -0.3, y = 2.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 7.5, angle = 90, vjust = 0,
+           label = "Marginal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 12.5, angle = 90, vjust = 0,
+           label = "Suboptimal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 17.5, angle = 90, vjust = 0,
+           label = "Optimal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  ###
+  at_panel(annotate("text", x = -0.3, y = 2.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=4, fontface="italic"), PANEL %in% 4) +
+  at_panel(annotate("text", x = -0.3, y = 7.5, angle = 90, vjust = 0,
+           label = "Marginal", color = "black", size=4, fontface="italic"), PANEL %in% 4) +
+  at_panel(annotate("text", x = -0.3, y = 12.5, angle = 90, vjust = 0,
+           label = "Suboptimal", color = "black", size=4, fontface="italic"), PANEL %in% 4) +
+  at_panel(annotate("text", x = -0.3, y = 17.5, angle = 90, vjust = 0,
+           label = "Optimal", color = "black", size=4, fontface="italic"), PANEL %in% 4) +
+  ###
+  at_panel(annotate("text", x = -0.3, y = 2.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=4, fontface="italic"), PANEL %in% 7) +
+  at_panel(annotate("text", x = -0.3, y = 7.5, angle = 90, vjust = 0,
+           label = "Marginal", color = "black", size=4, fontface="italic"), PANEL %in% 7) +
+  at_panel(annotate("text", x = -0.3, y = 12.5, angle = 90, vjust = 0,
+           label = "Suboptimal", color = "black", size=4, fontface="italic"), PANEL %in% 7) +
+  at_panel(annotate("text", x = -0.3, y = 17.5, angle = 90, vjust = 0,
+           label = "Optimal", color = "black", size=4, fontface="italic"), PANEL %in% 7) +
+  ###
+  at_panel(annotate("text", x = -0.3, y = 2.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=4, fontface="italic"), PANEL %in% 10) +
+  at_panel(annotate("text", x = -0.3, y = 7.5, angle = 90, vjust = 0,
+           label = "Marginal", color = "black", size=4, fontface="italic"), PANEL %in% 10) +
+  at_panel(annotate("text", x = -0.3, y = 12.5, angle = 90, vjust = 0,
+           label = "Suboptimal", color = "black", size=4, fontface="italic"), PANEL %in% 10) +
+  at_panel(annotate("text", x = -0.3, y = 17.5, angle = 90, vjust = 0,
+           label = "Optimal", color = "black", size=4, fontface="italic"), PANEL %in% 10) +
+  #repeating y axis label
+  at_panel(annotate("text", x = -0.75, y = 10, angle = 90, vjust = 0,
+           label = "Score", color = "black", size=7), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.75, y = 10, angle = 90, vjust = 0,
+           label = "Score", color = "black", size=7), PANEL %in% 4) +
+  at_panel(annotate("text", x = -0.75, y = 10, angle = 90, vjust = 0,
+           label = "Score", color = "black", size=7), PANEL %in% 7) +
+  at_panel(annotate("text", x = -0.75, y = 10, angle = 90, vjust = 0,
+           label = "Score", color = "black", size=7), PANEL %in% 10) +
+  #theme
+  theme_bw(base_size=15) +
+  theme(strip.placement="outside",
+        axis.text.y=element_text(size=12),
+        axis.text.x=element_text(size=12),
+        axis.title.y = element_text(size=20, vjust=7),
+        axis.title.x=element_text(size=20, vjust=-0.75), 
+        strip.text = element_text(size=12),
+        plot.margin=margin(t = 0.5, r = 1, b = 0.5, l = 1.5, unit = "cm"),
+        panel.spacing=unit(2, "lines"))
+
+rocr_habitat_graph
+
+```
+
+ROCR embed graph
+```{r}
+rocr_embed <- rocr %>%
+  subset(characteristic=="embed") %>%
+  mutate(x.axis=case_when(Site=="BAKE"~1,
+                          Site=="BRBR"~2,
+                          Site=="DUOA"~3,
+                          Site=="FEBR"~4,
+                          Site=="KLVA"~5,
+                          Site=="LUBR"~6,
+                          Site=="NOST"~7,
+                          Site=="PHBR"~8,
+                          Site=="PYBR"~9,
+                          Site=="R630"~10,
+                          Site=="ROC3"~11,)) %>%
+  mutate(value2=100-value)
+
+rocr_names <- c("Battery Kemble\nRun*‡", "Broad Branch", 
+                "Dumbarton Oaks*", "Fenwick Branch", "Klingle Valley*",
+                "Luzon Branch", "Normanstone Branch*", 
+                "Pinehurst Branch", "Piney Branch*", "Reservation 630",
+                "Rock Creek\nDownstream‡")
+
+rocr_embed_graph <- ggplot() +
+  ##background regions
+  annotate("rect", xmin=0.1, xmax=11.6, ymin=45, ymax=100, fill="#7dc7ff", alpha=0.5) +
+  annotate("rect", xmin=0.1, xmax=11.6, ymin=0, ymax=45, fill="#f27c7e", alpha=0.5) +
+  ##threshold line
+  geom_hline(yintercept=45, linetype="dashed", color="gray55") +
+  ##bar graph
+  geom_bar(data=rocr_embed[!rocr_embed$Site=="ROC3",], aes(x=as.factor(x.axis), y=value2, fill=year2), color="black", width=0.7, size=0.8, 
+           position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white"),
+                    labels=c("2008, *09", "2019, ‡22")) +
+  new_scale_fill() +
+  new_scale_colour() +
+  ##ROC3
+  geom_bar(data=rocr_embed[rocr_embed$Site=="ROC3",], aes(x=as.factor(x.axis), y=value2, fill=year2), 
+           color="black", width=0.35, size=0.8, position=position_nudge(0.18), stat="identity") +
+  scale_fill_manual(name="Year", values=c("white", "gray60"),
+                    guide="none") +
+  scale_x_discrete(labels=c(rocr_names),
+                   guide=guide_axis(angle=40)) +
+  scale_y_continuous(labels=c(100, 75, 50, 25, 0)) +
+  ##labels
+  xlab("Stream") +
+  ylab("Embeddedness (%)") +
+  ##setting graph boundaries
+  coord_cartesian(ylim=c(0, 100), xlim=c(0.1, 11.6), clip="off", expand=F) +
+  ##score category labels
+  annotate("text", x = 0.45, y = 22.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=5, fontface="italic") +
+  annotate("text", x = 0.45, y = 72.5, angle = 90, vjust = 0,
+           label = "Minimally impaired", color = "black", size=5, fontface="italic") +
+  ##theme
+  theme_bw(base_size=15) +
+  theme(axis.text.y=element_text(size=12),
+        axis.text.x=element_text(size=12),
+        axis.title.y = element_text(size=20, vjust=3), 
+        axis.title.x=element_text(size=20, vjust=-0.75),
+        plot.margin=margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+rocr_embed_graph
+
+```
+
+
+WOTR habitat graph
+```{r}
+wotr <- sph %>%
+  subset(Park=="WOTR" & (year==2012 | year==2022) & month>4) %>%
+  mutate(CharacteristicName=case_when(CharacteristicName=="embeddedness - percentage of rocks (gravel, cobble, boulders) covered by sediment (sand, silt)" ~ "embed",
+                   CharacteristicName=="habitat quality - riffle" ~ "riffle",
+                   CharacteristicName=="habitat quality - pool, glide, eddy" ~ "pool",
+                   CharacteristicName=="habitat quality - water velocity and depth" ~ "velocity_depth",
+                   CharacteristicName=="habitat quality - epifaunal substrate" ~ "epifaun",
+                   CharacteristicName=="habitat quality - instream habitat" ~ "instream")) 
+
+colnames(wotr)[5:6]=c("characteristic", "value")
+
+wotr <- exceed(wotr)
+
+
+wotr_habitat <- wotr %>%
+  filter(!characteristic=="embed") %>%
+  mutate(x.axis=case_when(characteristic=="epifaun" ~ 1,
+                          characteristic=="instream" ~ 2,
+                          characteristic=="pool" ~ 3,
+                          characteristic=="riffle" ~ 4,
+                          characteristic=="velocity_depth" ~ 5))
+
+wotr_habitat_graph <- ggplot() +
+  ##background regions
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=15, ymax=20, fill="#7dc7ff", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=10, ymax=15, fill="#8ba7d6", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=5, ymax=10, fill="#cf93b6", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=5.7, ymin=0, ymax=5, fill="#f27c7e", alpha=0.5) +
+  ##threshold lines
+  geom_hline(yintercept=5, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=10, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=15, linetype="dashed", color="gray55") +
+  ##bar graph
+  geom_bar(data=wotr_habitat, aes(x=as.factor(x.axis), y=value, fill=as.factor(year)), 
+           color="black", width=0.7, size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white"), 
+                    labels=c("2012", "2022")) +
+  ##facet grid
+  facet_wrap2(.~MonitoringLocationName, axes="all", remove_labels="y",
+              strip=strip_split("bottom")) +
+  scale_x_discrete(labels=c("Epifaunal", "Instream", "Pool", "Riffle", "Velocity"),
+                   guide=guide_axis(angle = 40)) +
+  ##labels
+  xlab("Stream") +
+  ylab("Score") +
+  ##setting graph boundaries
+  coord_cartesian(ylim=c(0, 20), xlim=c(0.3, 5.7), clip="off", expand=F) +
+  ##habitat quality color scale
+  at_panel(annotate("text", x = -0.3, y = 2.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 7.5, angle = 90, vjust = 0,
+           label = "Marginal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 12.5, angle = 90, vjust = 0,
+           label = "Suboptimal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 17.5, angle = 90, vjust = 0,
+           label = "Optimal", color = "black", size=4, fontface="italic"), PANEL %in% 1) +
+  at_panel(annotate("text", x = -0.3, y = 2.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=4, fontface="italic"), PANEL %in% 3) +
+  at_panel(annotate("text", x = -0.3, y = 7.5, angle = 90, vjust = 0,
+           label = "Marginal", color = "black", size=4, fontface="italic"), PANEL %in% 3) +
+  at_panel(annotate("text", x = -0.3, y = 12.5, angle = 90, vjust = 0,
+           label = "Suboptimal", color = "black", size=4, fontface="italic"), PANEL %in% 3) +
+  at_panel(annotate("text", x = -0.3, y = 17.5, angle = 90, vjust = 0,
+           label = "Optimal", color = "black", size=4, fontface="italic"), PANEL %in% 3) +
+  ##theme
+  theme_bw(base_size=15) +
+  theme(strip.placement="outside",
+        axis.text.y=element_text(size=12),
+        axis.text.x=element_text(size=10),
+        axis.title.y = element_text(size=20, vjust=7),
+        axis.title.x=element_text(size=20, vjust=-0.75), 
+        strip.text = element_text(size=15),
+        plot.margin=margin(t = 0.5, r = 1, b = 0.5, l = 1.5, unit = "cm"),
+        panel.spacing=unit(2, "lines"))
+
+wotr_habitat_graph
+
+```
+
+WOTR embed graph
+```{r}
+wotr_embed <- wotr %>%
+  subset(characteristic=="embed") %>%
+  mutate(x.axis=case_when(MonitoringLocationName=="Courthouse Creek" ~ 1,
+                          MonitoringLocationName=="Wolf Trap Creek" ~ 2)) %>%
+  mutate(value2=100-value)
+
+wotr_embed_graph <- ggplot() +
+  ##background regions
+  annotate("rect", xmin=0.3, xmax=2.6, ymin=45, ymax=100, fill="#7dc7ff", alpha=0.5) +
+  annotate("rect", xmin=0.3, xmax=2.6, ymin=0, ymax=45, fill="#f27c7e", alpha=0.5) +
+  ##threshold line
+  geom_hline(yintercept=45, linetype="dashed", color="gray55") +
+  ##bar graph
+  geom_bar(data=wotr_embed, aes(x=as.factor(x.axis), y=value2, fill=as.factor(year)), 
+           color="black", width=0.7, size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(name="Year", values=c("gray60", "white"),
+                    labels=c("2012", "2022")) +
+  scale_x_discrete(labels=c("Courthouse\nCreek", "Wolf Trap\nCreek")) +
+  scale_y_continuous(labels=c(100, 75, 50, 25, 0)) +
+  ##labels
+  xlab("Stream") +
+  ylab("Embeddedness (%)") +
+  ##setting graph boundaries
+  coord_cartesian(ylim=c(0, 100), xlim=c(0.3, 2.6), clip="off", expand=F) +
+  ##score category labels
+  annotate("text", x = 0.5, y = 22.5, angle = 90, vjust = 0,
+           label = "Poor", color = "black", size=5, fontface="italic") +
+  annotate("text", x = 0.5, y = 72.5, angle = 90, vjust = 0,
+           label = "Minimally impaired", color = "black", size=5, fontface="italic") +
+  ##theme
+  theme_bw(base_size=15) +
+  theme(axis.text.y=element_text(size=12),
+        axis.text.x=element_text(size=14),
+        axis.title.y = element_text(size=20, vjust=3), 
+        axis.title.x=element_text(size=20, vjust=-0.75),
+        plot.margin=margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+wotr_embed_graph
+
+```
+

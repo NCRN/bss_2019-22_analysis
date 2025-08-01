@@ -1,0 +1,898 @@
+---
+title: "Fish and Macroinvert Trends"
+author: "Emma Brentjens"
+date: "2025-03-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+
+##setting working directory and loading data
+current_wd <- getwd()
+setwd(current_wd)
+stream_data <- read.csv("20250225_wqp_wqx_bss_wq_npsncrn.csv")
+colnames(stream_data)
+head(stream_data)
+
+##loading in libraries
+library(lubridate)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+```
+
+Data wrangling
+```{r, echo=F}
+##filtering for columns of interest
+filter_1 <- stream_data[, c("ActivityIdentifier", "ActivityMediaSubdivisionName", 
+                            "ActivityStartDate", "MonitoringLocationIdentifier",
+                            "MonitoringLocationName", "CharacteristicName", 
+                            "ResultMeasureValue", "ResultMeasure.MeasureUnitCode",
+                            "SubjectTaxonomicName")]
+nrow(filter_1)
+unique(filter_1$CharacteristicName)
+
+##converting date to a date object
+filter_1$ActivityStartDate <- as.Date(filter_1$ActivityStartDate, format = "%Y-%m-%d")
+class(filter_1$ActivityStartDate)
+
+##creating year column
+filter_1$year <- year(filter_1$ActivityStartDate)
+
+##filtering for fish and macros 
+fish_inverts <- filter_1 %>%
+  filter(CharacteristicName %in% c("fish - count of individuals captured by species", 
+                                   "benthic macroinvertebrates - count of individuals captured by taxon"))
+
+nrow(fish_inverts)
+unique(fish_inverts$CharacteristicName)
+head(fish_inverts)
+
+##creating a park column
+fish_inverts2 <- fish_inverts %>%
+  separate(MonitoringLocationIdentifier, c("Network", "Park", "Site")) %>%
+  relocate(ResultMeasureValue, .after=MonitoringLocationName) 
+
+##creating fish df (filtering out amphibians and inverts)
+fish <- fish_inverts2 %>%
+  subset(CharacteristicName=="fish - count of individuals captured by species") %>%
+  filter(!((SubjectTaxonomicName=="Rana palustris") |
+             (SubjectTaxonomicName=="Rana sp.") |
+             (SubjectTaxonomicName=="Rana clamitans") |
+             (SubjectTaxonomicName=="Crayfish") |
+             (SubjectTaxonomicName=="Cambarus sp.") |
+             (SubjectTaxonomicName=="Faxonius sp.") |
+             (SubjectTaxonomicName=="Procambarus clarkii") |
+             (SubjectTaxonomicName=="Faxonius virilis") |
+             (SubjectTaxonomicName=="Cambarus bartonii") |
+             (SubjectTaxonomicName=="Lithobates catesbeianus") |
+             (SubjectTaxonomicName=="Orconectes limosus") |
+             (SubjectTaxonomicName=="Eurycea bislineata") |
+             (SubjectTaxonomicName=="Salamander") |
+             (SubjectTaxonomicName=="Faxonius limosus") |
+             (SubjectTaxonomicName=="Pseudotriton ruber") |
+             (SubjectTaxonomicName=="Lithobates sp.") |
+             (SubjectTaxonomicName=="Desmognathus fuscus"))) %>%
+  distinct()
+#View(fish)
+
+##creating inverts df
+inverts <- fish_inverts2 %>%
+  subset(CharacteristicName=="benthic macroinvertebrates - count of individuals captured by taxon") %>%
+  distinct()
+#View(inverts)
+
+```
+
+Fish general stats
+```{r}
+##number of species by park
+fish_species_park <- fish %>%
+  group_by(Park, year) %>%
+  summarize(n_fish_species=length(unique(SubjectTaxonomicName)))
+#View(fish_species_park)
+
+##number of species by site
+fish_species_site <- fish %>%
+  group_by(Park, Site, year) %>%
+  summarize(n_fish_species=length(unique(SubjectTaxonomicName)))
+#View(fish_species_site)
+
+##fish abundance by park
+fish_abundance_park <- fish %>%
+  group_by(Park, Site, year) %>%
+  summarize(fish_totals=sum(as.numeric(ResultMeasureValue), na.rm=T))
+#View(fish_abundance_park)
+
+##fish abundance by site
+fish_abundance_site <- fish %>%
+  group_by(Park, Site, year) %>%
+  summarize(fish_totals=sum(as.numeric(ResultMeasureValue), na.rm=T))
+#View(fish_abundance_site)
+
+
+##number of species by monitoring cycle (useful for sites like Rock Creek
+##and Monocacy that have two different years in one cycle)
+fish_species_cycle <- fish %>%
+  mutate(cycle=case_when(
+    year>2018 & year<2023 ~ "cycle 2",
+    year>2007 & year<2014 ~ "cycle 1",
+    year==2006 ~ "pilot 2",
+    year==2004 ~ "pilot 1",
+  )) %>%
+  group_by(Park, Site, cycle) %>% ##group by site
+  #group_by(Park, cycle) %>% ##group by park
+  summarize(n_fish_species=length(unique(SubjectTaxonomicName)))
+#View(fish_species_cycle)
+
+##most abundant fish in the region
+fish_abundance <- fish %>%
+  mutate(cycle=case_when(
+    year>2018 & year<2023 ~ "a_cycle 2",
+    year>2007 & year<2014 ~ "cycle 1",
+    year==2006 ~ "pilot 2",
+    year==2004 ~ "pilot 1",
+  )) %>%
+  group_by(SubjectTaxonomicName, cycle) %>%
+  summarize(fish_totals=sum(as.numeric(ResultMeasureValue), na.rm=T))
+#View(fish_abundance)
+
+```
+
+Macroinvert general stats
+```{r}
+##number of taxa by park
+invert_taxa_park <- inverts %>%
+  group_by(Park, year) %>%
+  summarize(n_invert_taxa=length(unique(SubjectTaxonomicName)))
+#View(invert_taxa_park)
+
+##number of taxa by site
+invert_taxa_site <- inverts %>%
+  group_by(Park, Site, year) %>%
+  summarize(n_invert_taxa=length(unique(SubjectTaxonomicName)))
+#View(invert_taxa_site)
+
+##invert abundance by park
+invert_abundance_park <- inverts %>%
+  group_by(Park, year) %>%
+  summarize(invert_totals=sum(as.numeric(ResultMeasureValue), na.rm=T)) 
+#View(invert_abundance_park)
+
+##invert % by park
+percent_inverts <- inverts %>%
+  filter(!(Site=="GAMI" & year==2019)) %>%
+  mutate(cycle=case_when(
+    year>2018 & year<2023 ~ "cycle 2",
+    year>2007 & year<2015 ~ "cycle 1",
+    year==2006 ~ "2006",
+    year==2004 ~ "2004",
+  )) %>%
+  group_by(Park, SubjectTaxonomicName, cycle) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  group_by(Park, cycle) %>%
+  mutate(total.inverts= sum(as.numeric(sum_inverts))) %>%
+  group_by(Park, SubjectTaxonomicName, cycle) %>%
+  mutate(percent_inverts=(sum_inverts/total.inverts)*100) %>%
+  mutate_if(is.numeric, round, 3)
+#View(percent_inverts)
+
+##invert abundance by site
+invert_abundance_site <- inverts %>%
+  group_by(Park, Site, year) %>%
+  summarize(invert_totals=sum(as.numeric(ResultMeasureValue), na.rm=T))
+#View(invert_abundance_site)
+
+##number of taxa by monitoring cycle (useful for sites like Rock Creek
+##and Monocacy that have two different years in one cycle)
+invert_taxa_cycle <- inverts %>%
+  filter(!(Site=="GAMI" & year==2019)) %>%
+  mutate(cycle=case_when(
+    year>2018 & year<2023 ~ "cycle 2",
+    year>2007 & year<2015 ~ "cycle 1",
+    year==2006 ~ "pilot 2",
+    year==2004 ~ "pilot 1",
+  )) %>%
+  group_by(Park, Site, cycle) %>% ##group by site
+  #group_by(Park, cycle) %>% ##group by park
+  summarize(n_invert_taxa=length(unique(SubjectTaxonomicName)))
+#View(invert_taxa_cycle)
+
+##most abundant inverts in region
+invert_abundance <- inverts %>%
+  filter(!(Site=="BLBZ")) %>%
+    mutate(cycle=case_when(
+    year>2018 & year<2023 ~ "a_cycle 2",
+    year>2007 & year<2015 ~ "cycle 1",
+    year==2006 ~ "pilot 2",
+    year==2004 ~ "pilot 1",
+  )) %>%
+  group_by(SubjectTaxonomicName, cycle) %>%
+  summarize(invert_totals=sum(as.numeric(ResultMeasureValue), na.rm=T))
+#View(invert_abundance)
+
+```
+
+Antietam Fish
+```{r, echo=F}
+##subsetting for ANTI
+anti_fish <- fish %>%
+  subset(Park=="ANTI") %>%
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_fish=sum(as.numeric(ResultMeasureValue), na.rm=T)) 
+#View(anti_fish)
+
+anti_fish_graph <- ggplot(anti_fish, aes(x=year, y=sum_fish, color=SubjectTaxonomicName)) +
+  geom_point() +
+  geom_line() +
+  theme_classic()
+
+anti_fish_graph
+
+##finding number of fish species
+anti_fish_species <- fish_species_site %>%
+  subset(Park=="ANTI")
+#View(anti_fish_species)
+
+# Notes:
+# First occurrence of slimy sculpin in 2022 (could be cottus spp. before), brown trout, central stoneroller 
+# Blacknose dace going down 
+
+```
+
+Antietam Macroinverts
+```{r, echo=FALSE}
+##subsetting for ANTI
+anti_inverts <- inverts %>%
+  subset(Park=="ANTI") %>%
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  mutate(invert_totals= sum(sum_inverts))
+#View(anti_inverts)
+
+anti_inverts_graph <- ggplot(anti_inverts[anti_inverts$invert_totals>=5,], aes(x=year, y=sum_inverts, color=SubjectTaxonomicName)) +
+  geom_point() +
+  geom_line() +
+  theme_classic()
+
+anti_inverts_graph
+
+##finding number of invert taxa
+anti_invert_taxa <- invert_taxa_site %>%
+  subset(Park=="ANTI")
+#View(anti_invert_taxa)
+
+# Notes:
+# Grammarus up from 2013
+
+##ANTI % inverts 
+anti_percent_inverts <- inverts %>%
+  subset(Park=="ANTI") %>%
+  subset(Site=="SHCK") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  group_by(year) %>%
+  mutate(total.inverts= sum(as.numeric(sum_inverts))) %>%
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(percent_inverts=(sum_inverts/total.inverts)*100) %>%
+  mutate_if(is.numeric, round, 2)
+#View(anti_percent_inverts)
+
+```
+
+Catoctin Fish
+```{r, echo=F}
+##subsetting for CATO 
+cato_fish <- fish %>%
+  subset(Park=="CATO") %>%
+  #subset(Site=="BGHC") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_fish=sum(as.numeric(ResultMeasureValue), na.rm=T)) 
+#View(cato_fish)
+
+cato_fish_graph <- ggplot(cato_fish, aes(x=year, y=sum_fish, color=SubjectTaxonomicName)) +
+  geom_point() +
+  geom_line() +
+  theme_classic()
+
+cato_fish_graph
+
+# Notes:
+# *BGHC:* Increase in blue ridge sculpin (120, 196), blacknose dace (68, 138), slight increase in fantail darter (not that abundant), decrease in longnose dace (63, 31), brown trout (down from 2006)
+# *BLBZ:* Not sampled in 2010, blacknose dace most abundant by far, followed by blue ridge sculpin and brown trout
+# *OWCK:* Increase in blacknose dace (399, 474), blue ridge sculpin (162, 333), in smaller numbers: slight increase in brook trout, fantail darter
+
+```
+
+Catoctin Macroinverts
+```{r, echo=FALSE}
+##subsetting for CATO 
+cato_inverts <- inverts %>%
+  subset(Park=="CATO") %>%
+  subset(Site=="BLBZ") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  mutate(invert_totals= sum(sum_inverts))
+#View(cato_inverts)
+
+cato_inverts_graph <- ggplot(cato_inverts[cato_inverts$invert_totals>=10,], 
+                             aes(x=year, y=sum_inverts, color=SubjectTaxonomicName)) +
+  geom_point() +
+  geom_line() +
+  #ylim(0, 80) +
+  theme_classic()
+
+##activate ylim line for better look at BLBZ data
+##invert totals >=10 for BGHC and OWCK for less clutter
+
+cato_inverts_graph
+
+# Notes:
+# *BGHC:* most abundant: Ephemerella, Prosimulium, Baetis; increase in Ephemerella (6, 77), Prosimulium (2, 48), slight increase in Orthocladius, slight decrease in Amphinemura 
+# *BLBZ:* Sympotthastia didn't appear in 2010 and now is the most abundant by far (988), followed by Prosimulium (first appearance), Ephemerella, Oulimnius; increase in Ephemerella (1, 51), Oulimnius (1, 16), decrease in Epeorus (23, 11), Ameletus (18, 8), and others 
+# *OWCK:* most abundant: Sympotthastia, Ephemerella, Orthocladius, Oulimnius; increase in all the most abundant; slight increase in Diamesa, decrease in Baetis
+
+##CATO % inverts 
+cato_percent_inverts <- inverts %>%
+  subset(Park=="CATO") %>%
+  subset(Site=="OWCK") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  group_by(year) %>%
+  mutate(total.inverts= sum(as.numeric(sum_inverts))) %>%
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(percent_inverts=(sum_inverts/total.inverts)*100) %>%
+  mutate_if(is.numeric, round, 3)
+#View(cato_percent_inverts)
+
+```
+
+George Washington Memorial Parkway Fish
+```{r, echo=F}
+##subsetting for GWMP 
+gwmp_fish <- fish %>%
+  subset(Park=="GWMP") %>%
+  subset(Site=="MIRU") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_fish=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  mutate(fish_totals= sum(sum_fish))
+#View(gwmp_fish)
+
+gwmp_fish_graph <- ggplot(gwmp_fish, aes(x=year, y=sum_fish, color=SubjectTaxonomicName)) +
+  geom_point() +
+  geom_line() +
+  theme_classic()
+
+gwmp_fish_graph
+
+##set gwmp_fish[gwmp_fish$fish_totals >10,] as data in ggplot for MIRU
+
+##set gwmp_fish[!gwmp_fish$year==2004,] as data in ggplot for PIRU
+
+# Notes:
+# *MICR:* major decrease in blacknose dace since 2012 (280, 74), first appearance of American eel; those are the only two species
+# *MIRU:* species rich (15 total species, 12 in 2022), steep decline in blacknose dace (75, 41, 13), decrease in central stoneroller and creek chub since 2012, increase in fantail darter (6, 16)
+# *PIRU:* decline in blacknose dace (78, 9), longnose dace remained steady, slight increase in American eel, decline in creek chub (20, 3)
+# *TURU:* decline in blacknose dace since 2012 (279, 64), slight decline in creek chub, slight increase in longnose dace and American eel 
+
+```
+
+George Washington Memorial Parkway Macroinverts
+```{r, echo=FALSE}
+##subsetting for GWMP 
+gwmp_inverts <- inverts %>%
+  subset(Park=="GWMP") %>%
+  subset(Site=="MICR") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  mutate(invert_totals= sum(sum_inverts))
+#View(gwmp_inverts)
+
+gwmp_inverts_graph <- ggplot(gwmp_inverts[gwmp_inverts$invert_totals >5,], aes(x=year, y=sum_inverts, color=SubjectTaxonomicName)) +
+  geom_point() +
+  geom_line() +
+  theme_classic()
+
+gwmp_inverts_graph
+
+# Notes:
+# *MICR:* Increase in Orthocladius (17, 100), slight increase in Eukiefferiella (1, 21), Cricotopus (1, 13), first appearance of Cardiocladius and Parametriocnemus, mutliple species did not appear since 2014 (Naididae, Gammarus, Enchytradeidae, Simulium, and others)
+# *MIRU:* increase in Orthoclaidus since 2014 (5, 75), first appearance of Diamesa since 2004, slight increase in Amphinemura, Polypediulum, slight decrease in Parametriocnemus, Simulium, Eukiefferiella, first appearance of Maccaffertium and Hydrobaenus since 2004
+# *PIRU:* decrease in Cricotopus since 2012 (31, 2), increase in Orthocladius (5, 27), slight increase in Polypedilum, Cardiocladius, first appearance of Diamesa since 2004 (now the most abundant), no Naididae recorded since it was most abundant in 2012
+# *TURU:* Increase in Orthocladius (8, 39), Diamesa (1, 35), Tvetenia remained steady, first appearance of Hydrobeanus since 2004, decrease in Simulium (19, 6), Corynoneura, first appearance of Polypedilum 
+
+##GWMP % inverts 
+gwmp_percent_inverts <- inverts %>%
+  subset(Park=="GWMP") %>%
+  subset(Site=="MICR") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  group_by(year) %>%
+  mutate(total.inverts= sum(as.numeric(sum_inverts))) %>%
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(percent_inverts=(sum_inverts/total.inverts)*100) %>%
+  mutate_if(is.numeric, round, 2)
+#View(gwmp_percent_inverts)
+
+```
+
+Harpers Ferry Fish
+```{r, echo=F}
+##subsetting for HAFE 
+hafe_fish <- fish %>%
+  subset(Park=="HAFE") %>%
+  subset(Site=="FLSP") %>% 
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_fish=sum(as.numeric(ResultMeasureValue), na.rm=T))
+#View(hafe_fish)
+
+hafe_fish_graph <- ggplot(hafe_fish, aes(x=year, y=sum_fish, color=SubjectTaxonomicName)) +
+  geom_point() +
+  geom_line() +
+  theme_classic()
+
+hafe_fish_graph
+
+# Notes:
+# Increase in river chub (4, 97), no bluntnose minnow since 2013, slight decrease in longnose dace, slight increase in greenside darter, new appearance of largemouth bass
+
+```
+
+Harpers Ferry Macroinverts
+```{r, echo=FALSE}
+##subsetting for HAFE 
+hafe_inverts <- inverts %>%
+  subset(Park=="HAFE") %>%
+  subset(Site=="FLSP") %>% 
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  mutate(invert_totals= sum(sum_inverts))
+#View(hafe_inverts)
+
+hafe_invert_graph <- ggplot(hafe_inverts[hafe_inverts$invert_totals>10,], aes(x=year, y=sum_inverts, color=SubjectTaxonomicName)) +
+  geom_point() +
+  geom_line() +
+  theme_classic()
+
+hafe_invert_graph
+
+# Notes:
+# First appearance of Lirceus (most abundant), increase in Orthocladius (3, 37) and Parakiefferiella (7, 34) since 2013, decrease in Parametriocnemus (44, 1) since 2013, no Rheocricotopus since 2013, slight increase in Crangonyx, Tvetenia, slight decrease in Simulium
+
+##HAFE % inverts 
+hafe_percent_inverts <- inverts %>%
+  subset(Park=="HAFE") %>%
+  subset(Site=="FLSP") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  group_by(year) %>%
+  mutate(total.inverts= sum(as.numeric(sum_inverts))) %>%
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(percent_inverts=(sum_inverts/total.inverts)*100) %>%
+  mutate_if(is.numeric, round, 2)
+#View(hafe_percent_inverts)
+
+```
+
+Manassas Fish
+```{r, echo=F}
+##subsetting for MANA 
+mana_fish <- fish %>%
+  subset(Park=="MANA") %>%
+  subset(Site=="YOBR") %>% 
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_fish=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  mutate(fish_totals= sum(sum_fish))
+#View(mana_fish)
+
+mana_fish_graph <- ggplot(mana_fish[mana_fish$fish_totals>10,], aes(x=year, y=sum_fish, color=SubjectTaxonomicName)) +
+  geom_point() +
+  geom_line() +
+  theme_classic()
+
+mana_fish_graph
+
+# Notes:
+# Second-most species-rich site in 2022 (22 species)
+# First appearance of marigined madtom and spottail shiner (since 2004), increase in fallfish (6, 57), green sunfish (20, 76), largemouth bass, tessellated darter, bluntnose minnow remained largely consistent, Slight decline in white sucker and longnose dace
+
+```
+
+Manassas Macroinverts
+```{r, echo=FALSE}
+##subsetting for MANA 
+mana_inverts <- inverts %>%
+  subset(Park=="MANA") %>%
+  subset(Site=="YOBR") %>% 
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  mutate(invert_totals= sum(sum_inverts))
+#View(mana_inverts)
+
+mana_invert_graph <- ggplot(mana_inverts[mana_inverts$invert_totals>10,], aes(x=year, y=sum_inverts, color=SubjectTaxonomicName)) +
+  geom_point() +
+  geom_line() +
+  theme_classic()
+
+mana_invert_graph
+
+# Notes:
+# Eukiefferiella most abundant, first appearance
+# Increase in Perlesta (8, 22), Rheocricotopus, Rheotanytarsus, slight increase in Simulium since 2010, Stenelmis fairly steady, decrease in Cricotopus (16, 5), Tanytarsus (11, 2)
+# First appearance of Thienemannimyia since 2004
+
+##MANA % inverts 
+mana_percent_inverts <- inverts %>%
+  subset(Park=="MANA") %>%
+  subset(Site=="YOBR") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  group_by(year) %>%
+  mutate(total.inverts= sum(as.numeric(sum_inverts))) %>%
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(percent_inverts=(sum_inverts/total.inverts)*100) %>%
+  mutate_if(is.numeric, round, 2)
+#View(mana_percent_inverts)
+
+```
+
+Monocacy Fish
+```{r, echo=F}
+##subsetting for MONO 
+mono_fish <- fish %>%
+  subset(Park=="MONO") %>%
+  subset(Site=="BUCK") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_fish=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  mutate(fish_totals= sum(sum_fish))
+#View(mono_fish)
+
+mono_fish_graph <- ggplot(mono_fish, aes(x=year, y=sum_fish, color=SubjectTaxonomicName)) +
+  geom_point() +
+  geom_line() +
+  theme_classic()
+
+mono_fish_graph
+
+##set mono_fish[mono_fish$fish_totals>10,] as data for BUCK
+##add [!mono_fish$SubjectTaxonomicName=="Rhinichthys atratulus",] to data for GAMI for closer look at other species
+
+# Notes:
+# *BUCK:* tied with MANA for highest fish species richness in 2022, increase in rainbow darter (92, 128), decrease in blue ridge sculpin (386, 57), central stoneroller (371, 10), longnose dace (211, 57), slight decrease in Potomac sculpin, greenside darter
+# *GAMI:* decrease in blacknose dace (300, 116), blue ridge sculpin (33, 7), white sucker, slight increase in fantail darter (16, 31), first appearance of longnose dace since 2004
+
+```
+
+Monocacy Macroinverts
+```{r, echo=FALSE}
+##subsetting for MONO 
+mono_inverts <- inverts %>%
+  subset(Park=="MONO") %>%
+  subset(Site=="GAMI") %>% ##plug in site here
+  subset(!year=="2019") %>%
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  mutate(invert_totals= sum(sum_inverts))
+#View(mono_inverts)
+
+mono_invert_graph <- ggplot(mono_inverts[mono_inverts$invert_totals>10,], aes(x=year, y=sum_inverts, color=SubjectTaxonomicName)) +
+  geom_point() +
+  geom_line() +
+  theme_classic()
+
+mono_invert_graph
+
+# Notes:
+# *BUCK:* increase in Orthocladius (9, 118), slight increase in Simulium, Cricotopus steady, first appearance of Hydrobaenus since 2004, new appearance of Thienemanniella, Nais and Baetis not recorded this year, Ameletus not recorded since 2004
+# *GAMI:* new appearance of Amphinemura, Corynoneura, Clinocera, increase in Sympotthastia, Simulium fairly steady, decrease in Parametriocnemus and Orthocladius since 2010, first appearance of Diamesa since 2004
+
+##MONO % inverts 
+mono_percent_inverts <- inverts %>%
+  subset(Park=="MONO") %>%
+  subset(Site=="BUCK") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  group_by(year) %>%
+  mutate(total.inverts= sum(as.numeric(sum_inverts))) %>%
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(percent_inverts=(sum_inverts/total.inverts)*100) %>%
+  mutate_if(is.numeric, round, 2)
+#View(mono_percent_inverts)
+
+```
+
+National Capital Parks- East Fish
+```{r, echo=F}
+##subsetting for NACE
+nace_fish <- fish %>%
+  subset(Park=="NACE") %>%
+  subset(Site=="STCK") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_fish=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  mutate(fish_totals= sum(sum_fish))
+#View(nace_fish)
+
+nace_fish_graph <- ggplot(nace_fish[nace_fish$fish_totals>10,], aes(x=year, y=sum_fish, color=SubjectTaxonomicName)) +
+  geom_point() +
+  geom_line() +
+  theme_classic()
+
+nace_fish_graph
+
+##set data as nace_fish[nace_fish$fish_totals>10 & !nace_fish$SubjectTaxonomicName=="Hybognathus regius",] for OXRU
+
+# Notes:
+# *HECR:* decrease in blacknose dace (391, 17), central stoneroller (229, 89), swallowtail shiner (191, 27), creek chub (107, 52), tessellated darter (101, 38), satinfin shiner (36, 6), increase in redbreast sunfish (77, 152), longnose dace not recorded since 2013
+# *OXRU:* second highest species richness (17, after MANA_YOBR and MONO_BUCK), decrease in eastern silvery minnow (1462, 183), mummichog (378, 141), increase in banded killifish (169, 339), slight increase in American eel
+# *STCK:* decrease in blacknose dace (93, 75), tesselated darter (91, 66), creek chub (58, 27), swallowtail shiner (55, 5), spotfin shiner (29, 2), increase in longnose dace (11, 51), white sucker steady, first appearance of spottail shiner, no more banded killifish since 2013, no mummichog since 2004
+
+```
+
+National Capital Parks- East Macroinverts
+```{r, echo=FALSE}
+##subsetting for NACE
+nace_inverts <- inverts %>%
+  subset(Park=="NACE") %>%
+  subset(Site=="OXRU") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  mutate(invert_totals= sum(sum_inverts))
+#View(nace_inverts)
+
+nace_invert_graph <- ggplot(nace_inverts[nace_inverts$invert_totals>10,], aes(x=year, y=sum_inverts, color=SubjectTaxonomicName)) +
+  geom_point() +
+  geom_line() +
+  theme_classic()
+
+nace_invert_graph
+
+# *HECR:* decrease in Polypedilum (52, 9), increase in Cricotopus (1, 25) and Orthocladius (2, 17), first appearance of Hydrobaenus, Oligochaeta, Rheocricotopus, Alabesmyia, no more Pentaneura
+# *OXRU:* increase in Cricotopus (45, 113), Orthocladius (3, 50), slight increase in Polypedilum, no more Tubificidae, Chironomus
+# *STCK:* increase in Cricotopus (24, 49), Polypedilum (14, 48), Hydrobaenus (1, 23), slight increase in Tanytarsus, Cheumatopsyche, Orthocladius fairly steady
+
+##NACE % inverts 
+nace_percent_inverts <- inverts %>%
+  subset(Park=="NACE") %>%
+  subset(Site=="STCK") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  group_by(year) %>%
+  mutate(total.inverts= sum(as.numeric(sum_inverts))) %>%
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(percent_inverts=(sum_inverts/total.inverts)*100) %>%
+  mutate_if(is.numeric, round, 2)
+#View(nace_percent_inverts)
+
+```
+
+Prince William Fish
+```{r, echo=F}
+##subsetting for PRWI 
+prwi_fish <- fish %>%
+  subset(Park=="PRWI") %>%
+  subset(Site=="TARU") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_fish=sum(as.numeric(ResultMeasureValue), na.rm=T)) 
+#View(prwi_fish)
+
+prwi_fish_graph <- ggplot(prwi_fish, aes(x=year, y=sum_fish, color=SubjectTaxonomicName)) +
+  geom_point() +
+  geom_line() +
+  theme_classic()
+
+prwi_fish_graph
+
+##finding number of fish species
+prwi_fish_species <- fish_species_site %>%
+  subset(Park=="PRWI")
+#View(prwi_fish_species)
+
+# Notes:
+# *BONE:* Only sampled in 2021
+# *CARU:* Increase in blacknose dace and creek chub, new appearances of rosyside dace, redbreast sunfish, pumpkinseed, bluegill, fallfish, american eel
+# *MARU:* Increase in Rhinichythys atratulus (40, 56), new appearance of creek chub
+# *MBBR:* Increase in Rosyside dace (14, 39), cutlips minnow, creek chub, american eel, fallfish, new appearance of tessellated darter, common shiner, no more margined madtom, decrease in creek chub and blacknose dace
+# *NFQC:* Increase in Fallfish, american eel, margined madtom, decrease in cutlips minnow, blacknose dace
+# *ORRU:* Decline in blacknose dace (185, 61)
+# *SFQC:* Only sampled in 2021
+# *SORU:* Only sampled in 2021
+# *TARU:* Decrease in blacknose dace, creek chub, rosyside dace
+
+```
+
+Prince William Macroinverts
+```{r, echo=FALSE}
+##subsetting for PRWI 
+prwi_inverts <- inverts %>%
+  subset(Park=="PRWI") %>%
+  subset(Site=="BONE") %>% ##plug in site here
+  #subset(year==2021) %>%
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  mutate(invert_totals= sum(sum_inverts))
+#View(prwi_inverts)
+
+prwi_inverts_graph <- ggplot(prwi_inverts[prwi_inverts$invert_totals>=5,], aes(x=year, y=sum_inverts, color=SubjectTaxonomicName)) +
+  geom_point() +
+  geom_line() +
+  theme_classic()
+
+prwi_inverts_graph
+
+##finding number of invert taxa
+prwi_invert_taxa <- invert_taxa_site %>%
+  subset(Park=="PRWI")
+#View(prwi_invert_taxa)
+
+# Notes:
+# *BONE:* Only sampled in 2021
+# *CARU:* Amphinemura and Simulium up from 2011 (from 14 to 22 and 4 to 20, respectively); highest is now Cnephia and Cricotopus/Orthocladius (both new)
+# *MARU:* Amphinemura down from 2011 (55 to 27 individuals), new appearance of cricotopus/orthocladius, nemouridae, no more leuctra 
+# *MBBR:* Amphinemura (59, 28) and Ephemerella (41, 21) down, no Constempellina found in 2021 (was at over 100 in 2011), new appearance of Baetis and Epeorus, Cricotopus/Orthocladius
+# *NFQC:* Increase in Simulium (17, 34), Cnephia highest in 2021 (new), new appearance of Optioservus, no more wormaldia, Cricotopus
+# *ORRU:* Decrease in Amphinemura (56, 27), increase in Simulium, no more Haploperla, but new appearances of Cricotopus/orthocladius, Nemouridae
+# *SFQC:* Only sampled in 2021
+# *SORU:* Only sampled in 2021
+# *TARU:* Decrease in Amphinemura (36, 15), ephemerella, tanytarsus, slight decrease in simulium, no more Constempellina, now have Nemouridae, Cricotopus/Orthocladius
+
+
+##PRWI % inverts 
+prwi_percent_inverts <- inverts %>%
+  subset(Park=="PRWI") %>%
+  subset(Site=="NFQC") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  group_by(year) %>%
+  mutate(total.inverts= sum(as.numeric(sum_inverts))) %>%
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(percent_inverts=(sum_inverts/total.inverts)*100) %>%
+  mutate_if(is.numeric, round, 2)
+#View(prwi_percent_inverts)
+
+```
+
+Rock Creek Fish
+```{r, echo=F}
+##subsetting for ROCR 
+rocr_fish <- fish %>%
+  subset(Park=="ROCR") %>%
+  subset(Site=="PHBR") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_fish=sum(as.numeric(ResultMeasureValue), na.rm=T)) 
+#View(rocr_fish)
+
+rocr_fish_graph <- ggplot(rocr_fish, aes(x=year, y=sum_fish, color=SubjectTaxonomicName)) +
+  geom_point() +
+  geom_line() +
+  theme_classic()
+
+rocr_fish_graph
+
+##set data as rocr_fish[!rocr_fish$SubjectTaxonomicName=="Rhinichthys atratulus",] for FEBR graph to see other species in better detail
+
+# Notes:
+# *BAKE:* increase in American eel from 2009 (3, 36)
+# *BRBR:* Decrease in blacknose dace from 2008(319, 109), slight increase in longnose dace, American eel, no more white sucker, first appearance of swallowtail shiner
+# *DUOA:* decrease in blacknose dace from 2009 (149, 29), no more American eel, bluegill, first appearance of longnose dace, creek chub
+# *FEBR:* no more blacknose dace (was most abundant in 2008), yellow bullhead, tessellated darter, increase in swallowtail shiner, decrease in satinfish shiner (31, 8), longnose dace (25, 4), first appearance of spotfin shiner (most abundant), bluegill, redbreast sunfish, others
+# *KLVA:* increase in American eel (9, 43), decrease in blacknose dace (140, 41), first appearance of creek chub, no more pumpkinseed
+# *LUBR:* decrease in blacknose dace (54, 9), longnose dace fairly steady, increase in species richness (first appearance of American eel, white sucker, creek chub)
+# *NOST:* no species recorded in multiple years; blacknose dace recorded in 2009, yellow bullhead, American eel, and creek chub recorded in 2019
+# *PHBR:* decrease in blacknose dace (148, 92), first appearance of longnose dace, spotfin shiner, American eel, creek chub fairly stable, slight increase in white sucker 
+# *PYBR:* Decrease in blacknose dace (176, 66), swallowtail shiner (32, 1), increase in American eel (57, 100), slight decrease in white sucker, first appearance of creek chub, several species not recorded in 2019 (bluntnose minnow, satinfin shiner, yellow bullhead, and others)
+# *R630:* decrease in blacknose dace (187, 102), increase in American eel (23, 81), slight increase in longnose dace
+# *ROC3:* decrease in longnose dace (190, 73), spottail shiner (92, 3), blacknose dace (43, 1), slight decrease in tessellated darter, increase in American eel (2, 94), several species did not appear again (swallowtail shiner, white sucker, yellow bullhead, etc)
+
+```
+
+Rock Creek Macroinverts
+```{r, echo=FALSE}
+##subsetting for ROCR 
+rocr_inverts <- inverts %>%
+  subset(Park=="ROCR") %>%
+  #subset(Site=="ROC3") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  mutate(invert_totals=sum(sum_inverts))
+#View(rocr_inverts)
+
+rocr_inverts_graph <- ggplot(rocr_inverts[rocr_inverts$invert_totals>=10,], aes(x=year, y=sum_inverts, color=SubjectTaxonomicName)) +
+  geom_point() +
+  geom_line() +
+  theme_classic()
+
+rocr_inverts_graph
+
+# Notes:
+# *BAKE:* slight increase in Orthocladius (36, 47), decrease in Tvetenia (32, 6), slight decrease in Polypedilum and Cheumatopsyche, first appearance of Diamesa, Cricotopus, Oligochaeta*, Eukiefferiella and others did not appear
+# *BRBR:* Cricotopus/orthocladius most abundant (first appearance), previous year had Cricotopus, slight increase in Polypedilum (6, 19), several taxa not detected this year (Dicrotendipes, Orthocladius, Limnophyes*), first appearance of several species (Diamesa*, Baetis, Eukiefferiella, Thienemanniella, Simulium*, Centroptilum*)
+# *DUOA:* major increase in Eukiefferiella (1, 50), decrease in Crangonyx (39, 30), several new appearances (Cricotopus/orthoclaidus, Diamesa, Hyalella, Limnophila, Antocha*, Hydroptila*), several did not appear in 2019 (Parametriocnemus, Polypedilum*, Tvetenia)
+# *FEBR:* species recorded in both 2008 and 2019 remained fairly steady (Paratanytarsus), slight increase in Polypedilum, Baetis*, Zavrelimyia, slight decrease in Naididae, new appearance of Cricotopus/orthocladius (did have those taxa recorded separately before), Eukiefferiella, no Enchytraeidae, Meropelopia*
+# *KLVA:* slight increase in Diamesa* (only similar species between 2014 and 2019), now have Cricotopus/orthocladius (had orthocladius before), Chironomus*, Eukiefferiella, Thienemanniella, Naididae, Chimarra, Simulium*, Physella*, no more Enchytraeidae, Chaetocladius*, Lumbriculidae*
+# *LUBR:* increase in Eukiefferiella (3, 34), slight increase in Naididae and Simulium* (very slight), slight decrease in Polypedilum, new appearance of Lumbriculidae, Limnophila*, no more Nais
+# *NOST:* major increase in Eukiefferiella (1, 63), increase in Baetis (2, 19), slight increase in Diamesa*, Naididae*, slight decrease in Simulium (pretty steady), new appearances of Thienemanniella, Pentaneura*, no more Tvetenia, Lumbriculidae*, Cura, Dolophilodes, 
+# *PHBR:* Increase in Naididae (2, 32), Cricotopus/orthocladius now the highest, new appearances of Acentrella, Polypedilum, Baetis*, Paratanytarsus*, no more Smittia*, Enchytraeidae*, Nais 
+# *PYBR:* increase in Simulium (2, 21), new appearances of several species (Chironomus (now highest), Physella, Hydroptila, Baetis, Gyaraulus*, Copepoda*), now have Cricotopus/orthocladius (had Cricotopus alone in 2014), no more Dicrotendipes, Giardia, Lumbriculidae 
+# *R630:* increase in Orthoclaidus (4, 36), slight increase in Crangonyx, new appearance of Chimarra, Eukiefferiella, no more Parametriocnemus, Tvetenia
+# *ROC3:* major increase in Cricotopus from 2004 (7, 102), decrease in Polypedilum, Orthocladius consistent (very slight decline), now have Cardiocladius, Diamesa, no more Birllia
+
+##ROCR % inverts 
+rocr_percent_inverts <- inverts %>%
+  subset(Park=="ROCR") %>%
+  #subset(Site=="R630") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  group_by(year) %>%
+  mutate(total.inverts= sum(as.numeric(sum_inverts))) %>%
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(percent_inverts=(sum_inverts/total.inverts)*100) %>%
+  mutate_if(is.numeric, round, 2)
+#View(rocr_percent_inverts)
+
+```
+
+Wolf Trap Fish
+```{r, echo=F}
+##subsetting for WOTR 
+wotr_fish <- fish %>%
+  subset(Park=="WOTR") %>%
+  subset(Site=="CHCK") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_fish=sum(as.numeric(ResultMeasureValue), na.rm=T)) 
+#View(wotr_fish)
+
+wotr_fish_graph <- ggplot(wotr_fish, aes(x=year, y=sum_fish, color=SubjectTaxonomicName)) +
+  geom_point() +
+  geom_line() +
+  ylim(0, 160) +
+  theme_classic()
+
+wotr_fish_graph
+
+##use ylim argument to get better view of species besides blacknose dace
+
+# Notes:
+# *CHCK:* slight decrease in blacknose dace (307, 262), decrease in central stoneroller (72, 3), longnose dace (83, 45), slight decrease in rosyside dace (17, 8), increase in creek chub, tessellated darter
+# *WOTR:* increase in blacknose dace since 2012 (220, 244), decrease in central stoneroller (101, 36), longnose dace (128, 28), and rosyside dace (54, 7), most other species remained steady
+
+```
+
+Wolf Trap Macroinverts
+```{r, echo=FALSE}
+##subsetting for WOTR 
+wotr_inverts <- inverts %>%
+  subset(Park=="WOTR") %>%
+  subset(Site=="WOTR") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  mutate(invert_totals=sum(sum_inverts))
+#View(wotr_inverts)
+
+wotr_inverts_graph <- ggplot(wotr_inverts[wotr_inverts$invert_totals>=10,], aes(x=year, y=sum_inverts, color=SubjectTaxonomicName)) +
+  geom_point() +
+  geom_line() +
+  theme_classic()
+
+wotr_inverts_graph
+
+# Notes:
+# *CHCK:* increase in Diamesa (4, 87), Polypedilum (1, 21), Cricotopus (3, 18), Orthocladius, slight decrease in Tvetenia, Nais and Eukiefferiella not recorded in 2022
+# *WOTR:* increase in Polypedilum (4, 53), Orthocladius (3, 49), Cricotopus (4, 15), Diamesa (1, 12), slight increase in Simulium, Tvetenia, decrease in Eukiefferiella (15, 1), Nais and Baetis not recorded
+
+##WOTR % inverts 
+wotr_percent_inverts <- inverts %>%
+  subset(Park=="WOTR") %>%
+  subset(Site=="WOTR") %>% ##plug in site here
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
+  group_by(year) %>%
+  mutate(total.inverts= sum(as.numeric(sum_inverts))) %>%
+  group_by(SubjectTaxonomicName, year) %>%
+  summarize(percent_inverts=(sum_inverts/total.inverts)*100) %>%
+  mutate_if(is.numeric, round, 2)
+#View(wotr_percent_inverts)
+
+```
+

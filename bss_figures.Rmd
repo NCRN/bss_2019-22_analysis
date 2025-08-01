@@ -1,0 +1,1240 @@
+---
+title: "bss_figures"
+author: "Emma Brentjens"
+date: "2025-03-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(ggplot2)
+
+##score function
+mutate_score <- function(data, variable) {
+  data %>%
+    mutate(Score=case_when(variable<2 ~ "very poor",
+                         variable>=2 & variable<3 ~ "poor",
+                         variable>=3 & variable<4 ~ "fair",
+                         variable>=4 ~ "good"))
+}
+
+```
+
+**Antietam** (FIBI corrected)
+```{r, echo=F}
+##creating dataframe
+anti <- data.frame(index=rep(c("FIBI", "BIBI"), each=2),
+#                        IBI=c(3, 3, 1.75, 2),
+                        IBI=c(4.3, 4.3, 1.75, 2),
+                        Year=rep(c("2013", "2022"), times=2),
+                   x_axis=rep(c(1, 2), each=2))
+#View(anti)
+
+##adding score column
+anti2 <- mutate_score(anti, anti$IBI)
+#View(anti2)
+
+##anti graph with black background labels
+anti_graph <- ggplot() +
+  geom_rect(aes(xmin=0, xmax=3), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.45, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=anti2, aes(x=as.factor(x_axis), y=IBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2013", "2022"), values=c("gray60", "white")) +
+  scale_x_discrete(labels=c("Fish Index of\nBiotic Integrity", "Benthic Index of\nBiotic Integrity"))+
+  ylab("Score") +
+  coord_cartesian(xlim=c(0.3, 2.55), ylim=c(0.8, 5), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=anti2, aes(x=c(0.825, 1.175, 1.825, 2.175), 
+                                 y=IBI, label=IBI), position="dodge", vjust=-0.5, size=6) +
+  theme(axis.title.y=element_text(size=20, vjust=+3),
+        axis.title.x=element_blank(),
+        axis.text.x=element_text(size=18, color="black", vjust=-0.5),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+anti_graph
+
+```
+
+*FIBI*
+```{r}
+##creating fibi dataframe
+anti_fibi <- anti %>%
+  subset(index=="FIBI")
+#View(anti_fibi)
+
+##creating fibi graph
+anti_fibi_graph <- ggplot() +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.522, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.522, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.522, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.522, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=anti_fibi, aes(x=as.factor(x_axis), y=IBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2013", "2022"), values=c("gray60", "white")) +
+  scale_x_discrete(label="") +
+  ylab("Fish Index of Biotic Integrity") +
+  xlab("Sharpsburg Creek") +
+  coord_cartesian(xlim=c(0.4, 1.5), ylim=c(0.8, 5), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=anti_fibi, aes(x=c(0.825, 1.175), 
+                                 y=IBI, label=IBI), position="dodge", vjust=-0.5, size=6) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=15, vjust=4), axis.text.x=element_text(size=14),
+        axis.ticks.x=element_blank(),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+anti_fibi_graph
+
+```
+
+*BIBI*
+```{r}
+##creating bibi dataframe
+anti_bibi <- anti %>%
+  subset(index=="BIBI")
+#View(anti_bibi)
+
+##creating bibi graph
+anti_bibi_graph <- ggplot() +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.522, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.522, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.522, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.522, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=anti_bibi, aes(x=as.factor(x_axis), y=IBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2013", "2022"), values=c("gray60", "white")) +
+  scale_x_discrete(label="") +
+  ylab("Benthic Index of Biotic Integrity") +
+  xlab("Sharpsburg Creek") +
+  coord_cartesian(xlim=c(0.4, 1.5), ylim=c(0.8, 5), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=anti_bibi, aes(x=c(0.825, 1.175), 
+                                 y=IBI, label=IBI), position="dodge", vjust=-0.5, size=6) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=15, vjust=4), axis.text.x=element_text(size=14),
+        axis.ticks.x=element_blank(),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+anti_bibi_graph
+
+```
+
+
+**Catoctin** 
+*FIBI* (correct)
+```{r, echo=F}
+##creating fibi dataframe
+cato_fibi <- data.frame(Site=rep(c("BGHC", "BLBZ", "OWCK"), times=2),
+                        Stream=rep(c("Big Hunting\nCreek", "Blue Blazes\nCreek", 
+                                     "Owens Creek")),
+                        FIBI=c(4.7, 3.3, 4.3, 4.3, 1, 3.7),
+                        Year=c(rep("2022", each=3), rep("2010", each=3)))
+#View(cato_fibi)
+
+##adding fibi 2022 column and number column for easy graphing/arrangement
+cato_fibi2 <- cato_fibi %>%
+  mutate(fibi_2022=rep(c(4.7, 3.3, 4.3), times=2)) %>%
+  mutate(x_axis=rep(c(1, 2, 3), times=2))
+
+##adding score column
+cato_fibi2 <- mutate_score(cato_fibi2, cato_fibi2$FIBI)
+#View(cato_fibi2)
+
+##rearrange dataframe 
+cato_fibi2 <- cato_fibi2 %>%
+  arrange(Year) %>%
+  arrange(Stream) 
+#View(cato_fibi2)
+
+##creating fibi graph
+cato_fibi_graph <- ggplot() +
+  geom_rect(aes(xmin=0, xmax=4), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=4), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=4), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=4), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.4, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.4, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.4, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.4, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=cato_fibi2, aes(x=as.factor(x_axis), y=FIBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2010", "2022"), values=c("gray60", "white")) +
+  scale_x_discrete(name="Stream", labels=c((cato_fibi2 %>% group_by(Stream) %>%
+                                              summarise(mean_fibi <- mean(FIBI)))$Stream))+
+  ylab("Fish Index of Biotic Integrity") +
+  coord_cartesian(xlim=c(0.2, 3.6), ylim=c(0.8, 5), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=cato_fibi2, aes(x=c(0.825, 1.175, 1.825, 2.175, 2.825, 3.175), 
+                                 y=FIBI, label=FIBI), position="dodge", vjust=-0.5, size=5) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75), axis.text.x=element_text(size=14),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+cato_fibi_graph
+
+```
+
+*BIBI*
+```{r, echo=F}
+##creating bibi dataframe
+cato_bibi <- data.frame(Site=rep(c("BGHC", "BLBZ", "OWCK"), times=2),
+                        Stream=rep(c("Big Hunting\nCreek", "Blue Blazes\nCreek", "Owens Creek"), times=2),
+                        BIBI=c(3.5, 2.75, 3.75, 3.5, 4.5, 3.5),
+                        Year=c(rep("2022", each=3), rep("2010", each=3)))
+#View(cato_bibi)
+
+
+##adding bibi 2022 column and number column for easy graphing
+cato_bibi2 <- cato_bibi %>%
+  mutate(bibi_2022=rep(c(3.5, 2.75, 3.75), times=2)) %>%
+  mutate(x_axis=rep(c(1, 2, 3), times=2))
+
+##adding score column
+cato_bibi2 <- mutate_score(cato_bibi2, cato_bibi2$BIBI)
+#View(cato_bibi2)
+
+##rearramge dataframe
+cato_bibi2 <- cato_bibi2 %>%
+  arrange(Year) %>%
+  arrange(Stream)
+#View(cato_bibi2)
+
+##creating bibi graph
+cato_bibi_graph <- ggplot() +
+  geom_rect(aes(xmin=0, xmax=4), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=4), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=4), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=4), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.4, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.4, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.4, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.4, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=cato_bibi2, aes(x=as.factor(x_axis), y=BIBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2010", "2022"), values=c("gray60", "white")) +
+  scale_x_discrete(name="Stream", labels=c((cato_bibi2 %>% group_by(Stream) %>%
+                                              summarise(mean_bibi <- mean(BIBI)))$Stream))+
+  ylab("Benthic Index of Biotic Integrity") +
+  coord_cartesian(xlim=c(0.2, 3.6), ylim=c(0.8, 5), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=cato_bibi2, aes(x=c(0.825, 1.175, 1.825, 2.175, 2.825, 3.175), 
+                                 y=BIBI, label=BIBI), position="dodge", vjust=-0.5, size=5) +
+  theme(axis.title.y=element_text(size=20, vjust=+3),
+        axis.title.x=element_text(size=20, vjust=-0.75),
+        axis.text.x=element_text(size=14),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+cato_bibi_graph
+
+```
+
+
+**George Washington Memorial Parkway** 
+*FIBI* (correct)
+```{r, echo=F}
+##creating fibi dataframe
+gwmp_fibi <- data.frame(Site=rep(c("MIRU", "MICR", "PIRU", "TURU"), times=2),
+                        Stream=rep(c("Mine Run", "Minnehaha\nCreek*", "Pimmit Run", "Turkey Run"), times=2),
+                        FIBI=c(3.7, 1.3, 1.7, 2, 3.7, 1.7, 1.7, 2.3),
+                        Year=c(rep("2022", each=4), rep("2012", each=4)))
+#View(gwmp_fibi)
+
+##adding fibi 2022 column and number column for easy graphing
+gwmp_fibi2 <- gwmp_fibi %>%
+  mutate(fibi_2022=rep(c(3.7, 1.3, 1.7, 2), times=2)) %>%
+  mutate(x_axis=rep(c(1, 2, 3, 4), times=2))
+
+##adding score column
+gwmp_fibi2 <- mutate_score(gwmp_fibi2, gwmp_fibi2$FIBI)
+#View(gwmp_fibi2)
+
+##Label column
+gwmp_fibi_labels <- gwmp_fibi2 %>%
+  arrange(Year) %>%
+  arrange(Stream)
+
+labels <- as.list(gwmp_fibi_labels$FIBI)
+labels
+
+gwmp_fibi2$labels <- c(labels)
+#View(gwmp_fibi2)
+
+##creating fibi graph
+gwmp_fibi_graph <- ggplot() +
+  geom_rect(aes(xmin=0, xmax=5), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=5), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=5), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=5), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.35, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.35, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.35, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.35, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=gwmp_fibi2, aes(x=as.factor(x_axis), y=FIBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2012 (*2009)", "2022"), values=c("gray60", "white")) +
+  scale_x_discrete(name="Stream", labels=c((gwmp_fibi2 %>% group_by(Stream) %>%
+                                              summarise(mean_fibi <- mean(FIBI)))$Stream))+
+  ylab("Fish Index of Biotic Integrity") +
+  coord_cartesian(xlim=c(0.1, 4.6), ylim=c(0.8, 5), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=gwmp_fibi2, aes(x=c(0.825, 1.175, 1.825, 2.175, 2.825, 3.175,
+                                     3.825, 4.175), 
+                                 y=as.numeric(labels), label=labels), position="dodge", vjust=-0.5, size=4.75) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75), axis.text.x=element_text(size=14),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+gwmp_fibi_graph
+
+```
+
+*BIBI*
+```{r, echo=F}
+##creating fibi dataframe
+gwmp_bibi <- data.frame(Site=rep(c("MIRU", "MICR", "PIRU", "TURU"), times=2),
+                        Stream=rep(c("Mine Run", "Minnehaha\nCreek*", "Pimmit Run", "Turkey Run"), times=2),
+                        BIBI=c(4, 2, 2, 2, 4, 2.33, 2.33, 1.33),
+                        Year=c(rep("2022", each=4), rep("2012", each=4)))
+#View(gwmp_bibi)
+
+##adding bibi 2022 column and number column for easy graphing
+gwmp_bibi2 <- gwmp_bibi %>%
+  mutate(bibi_2022=rep(c(4, 2, 2, 2), times=2)) %>%
+  mutate(x_axis=rep(c(1, 2, 3, 4), times=2))
+
+##adding score column
+gwmp_bibi2 <- mutate_score(gwmp_bibi2, gwmp_bibi2$BIBI)
+#View(gwmp_bibi2)
+
+##Label column
+gwmp_bibi_labels <- gwmp_bibi2 %>%
+  arrange(Year) %>%
+  arrange(Stream)
+
+labels <- as.list(gwmp_bibi_labels$BIBI)
+labels
+
+gwmp_bibi2$labels <- c(labels)
+#View(gwmp_bibi2)
+
+##creating bibi graph
+gwmp_bibi_graph <- ggplot() +
+  geom_rect(aes(xmin=0, xmax=5), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=5), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=5), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=5), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.35, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.35, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.35, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.35, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=gwmp_bibi2, aes(x=as.factor(x_axis), y=BIBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2012 (*2014)", "2022"), values=c("gray60", "white")) +
+  scale_x_discrete(name="Stream", labels=c((gwmp_bibi2 %>% group_by(Stream) %>%
+                                              summarise(mean_bibi <- mean(BIBI)))$Stream))+
+  ylab("Benthic Index of Biotic Integrity") +
+  coord_cartesian(xlim=c(0.1, 4.6), ylim=c(0.8, 5), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=gwmp_bibi2, aes(x=c(0.825, 1.175, 1.825, 2.175, 2.825, 3.175,
+                                     3.825, 4.175), 
+                                 y=as.numeric(labels), label=labels), position="dodge", vjust=-0.5, size=4.75) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75), axis.text.x=element_text(size=14),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+gwmp_bibi_graph
+
+```
+
+
+**Harpers Ferry** (FIBI correct)
+```{r, echo=F}
+##creating dataframe
+hafe <- data.frame(index=rep(c("FIBI", "BIBI"), each=2),
+                        IBI=c(3, 3.7, 1.5, 1.5),
+                        Year=rep(c("2013", "2022"), times=2),
+                   x_axis=rep(c(1, 2), each=2))
+#View(hafe)
+
+##adding score column
+hafe2 <- mutate_score(hafe, hafe$IBI)
+#View(hafe2)
+
+##creating graph
+hafe_graph <- ggplot() +
+  geom_rect(aes(xmin=0, xmax=3), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.45, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=hafe2, aes(x=as.factor(x_axis), y=IBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2013", "2022"), values=c("gray60", "white")) +
+  scale_x_discrete(labels=c("Fish Index of\nBiotic Integrity", "Benthic Index of\nBiotic Integrity"))+
+  ylab("Score") +
+  coord_cartesian(xlim=c(0.3, 2.55), ylim=c(0.8, 5), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=hafe2, aes(x=c(0.825, 1.175, 1.825, 2.175), 
+                                 y=IBI, label=IBI), position="dodge", vjust=-0.5, size=6) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_blank(),
+        axis.text.x=element_text(size=18, color="black", vjust=-0.5),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+hafe_graph
+
+```
+
+*FIBI*
+```{r}
+##creating fibi dataframe
+hafe_fibi <- hafe %>%
+  subset(index=="FIBI")
+#View(hafe_fibi)
+
+##creating fibi graph
+hafe_fibi_graph <- ggplot() +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.522, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.522, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.522, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.522, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=hafe_fibi, aes(x=as.factor(x_axis), y=IBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2013", "2022"), values=c("gray60", "white")) +
+  scale_x_discrete(label="") +
+  ylab("Fish Index of Biotic Integrity") +
+  xlab("Flowing Springs Run") +
+  coord_cartesian(xlim=c(0.4, 1.5), ylim=c(0.8, 5), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=hafe_fibi, aes(x=c(0.825, 1.175), 
+                                 y=IBI, label=IBI), position="dodge", vjust=-0.5, size=6) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=15, vjust=4), axis.text.x=element_text(size=14),
+        axis.ticks.x=element_blank(),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+hafe_fibi_graph
+
+```
+
+*BIBI*
+```{r}
+##creating bibi dataframe
+hafe_bibi <- hafe %>%
+  subset(index=="BIBI")
+#View(hafe_bibi)
+
+##creating bibi graph
+hafe_bibi_graph <- ggplot() +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.522, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.522, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.522, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.522, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=hafe_bibi, aes(x=as.factor(x_axis), y=IBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2013", "2022"), values=c("gray60", "white")) +
+  scale_x_discrete(label="") +
+  ylab("Benthic Index of Biotic Integrity") +
+  xlab("Flowing Springs Run") +
+  coord_cartesian(xlim=c(0.4, 1.5), ylim=c(0.8, 5), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=hafe_bibi, aes(x=c(0.825, 1.175), 
+                                 y=IBI, label=IBI), position="dodge", vjust=-0.5, size=6) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=15, vjust=4), axis.text.x=element_text(size=14),
+        axis.ticks.x=element_blank(),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+hafe_bibi_graph
+
+```
+
+
+**Manassas** (FIBI corrected)
+```{r, echo=F}
+##creating dataframe
+mana <- data.frame(index=rep(c("FIBI", "BIBI"), each=2),
+                        IBI=c(2.7, 3, 3, 4),
+                        Year=rep(c("2010", "2022"), times=2),
+                   x_axis=rep(c(1, 2), each=2))
+#View(mana)
+
+##adding score column
+mana2 <- mutate_score(mana, mana$IBI)
+#View(mana2)
+
+##creating graph
+mana_graph <- ggplot() +
+  geom_rect(aes(xmin=0, xmax=3), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.45, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=mana2, aes(x=as.factor(x_axis), y=IBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2010", "2022"), values=c("gray60", "white")) +
+  scale_x_discrete(labels=c("Fish Index of\nBiotic Integrity", "Benthic Index of\nBiotic Integrity"))+
+  ylab("Score") +
+  coord_cartesian(xlim=c(0.3, 2.55), ylim=c(0.8, 5), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=mana2, aes(x=c(0.825, 1.175, 1.825, 2.175), 
+                                 y=IBI, label=IBI), position="dodge", vjust=-0.5, size=6) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_blank(),
+        axis.text.x=element_text(size=18, color="black", vjust=-0.5),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+mana_graph
+
+```
+
+*FIBI*
+```{r}
+##creating fibi dataframe
+mana_fibi <- mana %>%
+  subset(index=="FIBI")
+#View(mana_fibi)
+
+##creating fibi graph
+mana_fibi_graph <- ggplot() +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.522, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.522, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.522, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.522, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=mana_fibi, aes(x=as.factor(x_axis), y=IBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2010", "2022"), values=c("gray60", "white")) +
+  scale_x_discrete(label="") +
+  ylab("Fish Index of Biotic Integrity") +
+  xlab("Young's Branch") +
+  coord_cartesian(xlim=c(0.4, 1.5), ylim=c(0.8, 5), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=mana_fibi, aes(x=c(0.825, 1.175), 
+                                 y=IBI, label=IBI), position="dodge", vjust=-0.5, size=6) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=15, vjust=4), axis.text.x=element_text(size=14),
+        axis.ticks.x=element_blank(),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+mana_fibi_graph
+
+```
+
+*BIBI*
+```{r}
+##creating bibi dataframe
+mana_bibi <- mana %>%
+  subset(index=="BIBI")
+#View(mana_bibi)
+
+##creating bibi graph
+mana_bibi_graph <- ggplot() +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0.4, xmax=1.5), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.522, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.522, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.522, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.522, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=mana_bibi, aes(x=as.factor(x_axis), y=IBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2010", "2022"), values=c("gray60", "white")) +
+  scale_x_discrete(label="") +
+  ylab("Benthic Index of Biotic Integrity") +
+  xlab("Young's Branch") +
+  coord_cartesian(xlim=c(0.4, 1.5), ylim=c(0.8, 5), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=mana_bibi, aes(x=c(0.825, 1.175), 
+                                 y=IBI, label=IBI), position="dodge", vjust=-0.5, size=6) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=15, vjust=4), axis.text.x=element_text(size=14),
+        axis.ticks.x=element_blank(),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+mana_bibi_graph
+
+```
+
+
+**Monocacy** 
+*FIBI* (corrected)
+```{r, echo=F}
+##creating fibi dataframe
+mono_fibi <- data.frame(Site=rep(c("BUCK", "GAMI"), times=2),
+                        Stream=rep(c("Bush Creek", "Gambrill Mill Creek"), times=2),
+                        FIBI=c(4.7, 3.7, 4.3, 3.3),
+                        Year=c(rep("2022", each=2), rep("2010", each=2)))
+#View(mono_fibi)
+
+##2022 values only
+mono_fibi_2022 <- mono_fibi %>%
+  filter(Year==2022) 
+
+##adding fibi 2022 column and number column for easy graphing
+mono_fibi2 <- mono_fibi %>%
+  mutate(fibi_2022=rep(c(mono_fibi_2022$FIBI), times=2)) %>%
+  mutate(x_axis=rep(c(1, 2), times=2))
+
+##adding score column
+mono_fibi2 <- mutate_score(mono_fibi2, mono_fibi2$FIBI)
+#View(mono_fibi2)
+
+##rearrange dataframe
+mono_fibi2 <- mono_fibi2 %>%
+  arrange(Year) %>%
+  arrange(Stream)
+#View(mono_fibi2)
+
+##creating fibi graph
+mono_fibi_graph <- ggplot() +
+  geom_rect(aes(xmin=0, xmax=3), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.45, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=mono_fibi2, aes(x=as.factor(x_axis), y=FIBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2010", "2022"), values=c("gray60", "white")) +
+  scale_x_discrete(name="Stream", labels=c((mono_fibi2 %>% group_by(Stream) %>%
+                                              summarise(mean_fibi <- mean(FIBI)))$Stream))+
+  ylab("Fish Index of Biotic Integrity") +
+  coord_cartesian(xlim=c(0.3, 2.55), ylim=c(0.8, 5.01), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=mono_fibi2, aes(x=c(0.825, 1.175, 1.825, 2.175), 
+                                 y=FIBI, label=FIBI), 
+                                 position="dodge", vjust=-0.5, size=6) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75), axis.text.x=element_text(size=16),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+mono_fibi_graph
+
+```
+
+*BIBI*
+```{r, echo=F}
+##creating fibi dataframe
+mono_bibi <- data.frame(Site=rep(c("BUCK", "GAMI"), times=2),
+                        Stream=rep(c("Bush Creek", "Gambrill Mill Creek"), times=2),
+                        BIBI=c(2, 4, 3.33, 1.67),
+                        Year=c(rep("2022", each=2), rep("2010", each=2)))
+#View(mono_bibi)
+
+##2022 values only
+mono_bibi_2022 <- mono_bibi %>%
+  filter(Year==2022) 
+
+##adding bibi 2022 column and number column for easy graphing
+mono_bibi2 <- mono_bibi %>%
+  mutate(bibi_2022=rep(c(mono_bibi_2022$BIBI), times=2)) %>%
+  mutate(x_axis=rep(c(1, 2), times=2))
+
+##adding score column
+mono_bibi2 <- mutate_score(mono_bibi2, mono_bibi2$BIBI)
+#View(mono_bibi2)
+
+##rearrange dataframe 
+mono_bibi2 <- mono_bibi2 %>%
+  arrange(Year) %>%
+  arrange(Stream)
+#View(mono_bibi2)
+
+##creating bibi graph
+mono_bibi_graph <- ggplot() +
+  geom_rect(aes(xmin=0, xmax=3), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.45, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=mono_bibi2, aes(x=as.factor(x_axis), y=BIBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2010", "2022"), values=c("gray60", "white")) +
+  scale_x_discrete(name="Stream", labels=c((mono_bibi2 %>% group_by(Stream) %>%
+                                              summarise(mean_bibi <- mean(BIBI)))$Stream))+
+  ylab("Benthic Index of Biotic Integrity") +
+  coord_cartesian(xlim=c(0.3, 2.55), ylim=c(0.8, 5.01), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=mono_bibi2, aes(x=c(0.825, 1.175, 1.825, 2.175), 
+                                 y=BIBI, label=BIBI), 
+                                 position="dodge", vjust=-0.5, size=6) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75), axis.text.x=element_text(size=16),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+mono_bibi_graph
+
+```
+
+
+**National Capital Parks- East**
+*FIBI* (corrected)
+```{r, echo=F}
+##creating fibi dataframe
+nace_fibi <- data.frame(Site=rep(c("HECR", "OXRU", "STCK"), times=2),
+                        Stream=rep(c("Henson Creek", "Oxon Run", "Still Creek"), times=2),
+                        FIBI=c(4.3, 4.3, 3.7, 4.3, 4, 3.7),
+                        Year=c(rep("2022", each=3), rep("2013", each=3)))
+#View(nace_fibi)
+
+##2022 values only
+nace_fibi_2022 <- nace_fibi %>%
+  filter(Year==2022) 
+
+##adding fibi 2022 column and number column for easy graphing
+nace_fibi2 <- nace_fibi %>%
+  mutate(fibi_2022=rep(c(nace_fibi_2022$FIBI), times=2)) %>%
+  mutate(x_axis=rep(c(1, 2, 3), times=2))
+
+##adding score column
+nace_fibi2 <- mutate_score(nace_fibi2, nace_fibi2$FIBI)
+#View(nace_fibi2)
+
+##rearrange dataframe
+nace_fibi2 <- nace_fibi2 %>%
+  arrange(Year) %>%
+  arrange(Stream)
+#View(nace_fibi2)
+
+##creating fibi graph
+nace_fibi_graph <- ggplot() +
+  geom_rect(aes(xmin=0, xmax=4), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=4), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=4), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=4), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.4, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.4, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.4, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.4, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=nace_fibi2, aes(x=as.factor(x_axis), y=FIBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2013", "2022"), values=c("gray60", "white")) +
+  scale_x_discrete(name="Stream", labels=c((nace_fibi2 %>% group_by(Stream) %>%
+                                              summarise(mean_fibi <- mean(FIBI)))$Stream))+
+  ylab("Fish Index of Biotic Integrity") +
+  coord_cartesian(xlim=c(0.2, 3.6), ylim=c(0.8, 5), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=nace_fibi2, aes(x=c(0.825, 1.175, 1.825, 2.175, 2.825, 3.175), 
+                                 y=FIBI, label=FIBI), 
+                                 position="dodge", vjust=-0.5, size=5) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75), axis.text.x=element_text(size=15),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+nace_fibi_graph
+
+```
+
+*BIBI*
+```{r, echo=F}
+##creating fibi dataframe
+nace_bibi <- data.frame(Site=rep(c("HECR", "OXRU", "STCK"), times=2),
+                        Stream=rep(c("Henson Creek", "Oxon Run", "Still Creek"), times=2),
+                        BIBI=c(3.29, 1.57, 2.71, 3, 2.71, 3.86),
+                        Year=c(rep("2022", each=3), rep("2013", each=3)))
+#View(nace_bibi)
+
+##2022 values only
+nace_bibi_2022 <- nace_bibi %>%
+  filter(Year==2022) 
+
+##adding bibi 2022 column and number column for easy graphing
+nace_bibi2 <- nace_bibi %>%
+  mutate(bibi_2022=rep(c(nace_bibi_2022$BIBI), times=2)) %>%
+  mutate(x_axis=rep(c(1, 2, 3), times=2))
+
+##adding score column
+nace_bibi2 <- mutate_score(nace_bibi2, nace_bibi2$BIBI)
+#View(nace_bibi2)
+
+##rearrange dataframe
+nace_bibi2 <- nace_bibi2 %>%
+  arrange(Year) %>%
+  arrange(Stream)
+#View(nace_bibi2)
+
+##creating bibi graph
+nace_bibi_graph <- ggplot() +
+  geom_rect(aes(xmin=0, xmax=4), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=4), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=4), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=4), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.4, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.4, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.4, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.4, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=nace_bibi2, aes(x=as.factor(x_axis), y=BIBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2013", "2022"), values=c("gray60", "white")) +
+  scale_x_discrete(name="Stream", labels=c((nace_bibi2 %>% group_by(Stream) %>%
+                                              summarise(mean_bibi <- mean(BIBI)))$Stream))+
+  ylab("Benthic Index of Biotic Integrity") +
+  coord_cartesian(xlim=c(0.2, 3.6), ylim=c(0.8, 5), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=nace_bibi2, aes(x=c(0.825, 1.175, 1.825, 2.175, 2.825, 3.175), 
+                                 y=BIBI, label=BIBI), 
+                                 position="dodge", vjust=-0.5, size=5) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75), axis.text.x=element_text(size=15),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+nace_bibi_graph
+
+```
+
+
+**Prince William**
+*FIBI* (corrected)
+```{r, echo=F}
+##creating fibi data frame
+fibi <- data.frame(Site=rep(c("BONE", "CARU", "MBBR", "MARU", "NFQC",
+                              "ORRU", "SFQC", "SORU", "TARU"), times=2),
+                   Stream=rep(c("Boneyard Run", "Carters Run", "Mary Byrd\nBranch", 
+                                "Mawavi Run", "North Fork\nQuantico Creek", "Orenda Run",
+                                "South Fork\nQuantico Creek", "Sow Run", "Taylor Run"),
+                              times=2),
+                   FIBI=c(1.7, 2.3, 3, 1.7, 2.7, 1.3, 2.7, 3.3, 1.7, NA, 1, 2, 1.3, 
+                          2.3, 1.7, NA, NA, 3),
+                   Year=c(rep("2021", each=9), rep("2011", each=9)))
+#View(fibi)
+
+fibi2 <- fibi %>%
+  mutate(fibi_2021=rep(c(2, 2.3, 4, 1.3, 3.3, NA, 3.7, 4, 2), times=2)) %>%
+  mutate(x_axis=rep(c(1, 2, 3, 4, 5, 6, 7, 8, 9), times=2))
+#View(fibi2)
+
+##adding score column
+fibi2 <- mutate_score(fibi2, fibi2$FIBI)
+#View(fibi2)
+
+##rearrange dataframe
+fibi2 <- fibi2 %>%
+  arrange(Year) %>%
+  arrange(Stream)
+#View(fibi2)
+
+
+fibi_graph <- ggplot() +
+  geom_rect(aes(xmin=0, xmax=10), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=10), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=10), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=10), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.25, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.25, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.25, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.25, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=fibi2, aes(x=as.factor(x_axis), y=FIBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2011", "2021"), values=c("gray60", "white")) +
+  scale_x_discrete(name="Stream", labels=c((fibi2 %>% group_by(Stream) %>%
+                                              summarise(mean_fibi <- mean(FIBI)))$Stream),
+                   guide=guide_axis(angle = 40))+
+  ylab("Fish Index of Biotic Integrity") +
+  coord_cartesian(xlim=c(0, 9.6), ylim=c(0.8, 5), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=fibi2, aes(x=c(0.825, 1.175, 1.825, 2.175, 2.825, 3.175, 3.825,
+                                     4.175, 4.825, 5.175, 5.825, 6.175, 6.825, 7.175,
+                                     7.825, 8.175, 8.825, 9.175), 
+                                 y=FIBI, label=FIBI), position="dodge", vjust=-0.5, size=3.75) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+fibi_graph
+
+```
+
+*BIBI*
+```{r, echo=F}
+##creating bibi dataframe
+bibi <- data.frame(Site=rep(c("BONE", "CARU", "MBBR", "MARU", "NFQC",
+                              "ORRU", "SFQC", "SORU", "TARU"), times=2),
+                   Stream=rep(c("Boneyard Run", "Carters Run", "Mary Byrd\nBranch", 
+                                "Mawavi Run", "North Fork\nQuantico Creek", "Orenda Run",
+                                "South Fork\nQuantico Creek", "Sow Run", "Taylor Run"),
+                              times=2),
+                   BIBI=c(2.67, 3.33, 4.67, 3, 3.33, 3.33, 4.33, 3.33, 4.67, NA, 2.67, 4.33, 4.67, 4.67, 3.67, NA, NA, 4.33),
+                   Score=c("poor", "fair", "fair", "a_good", "fair", "fair", "a_good", "fair", "a_good", rep("z_none", each=9)),
+                   Year=c(rep("2021", each=9), rep("2011", each=9)))
+#View(bibi)
+
+
+##adding bibi 2021 column and number column for easy graphing
+bibi2 <- bibi %>%
+  mutate(bibi_2021=rep(c(2.67, 3.33, 4.67, 3, 3.33, 3.33, 4.33, 3.33, 4.67), times=2)) %>%
+  mutate(x_axis=rep(c(1, 2, 3, 4, 5, 6, 7, 8, 9), times=2))
+#View(bibi2)
+
+##rearrange dataframe
+bibi2 <- bibi2 %>%
+  arrange(Year) %>%
+  arrange(Stream)
+#View(bibi2)
+
+##creating bibi graph
+bibi_graph <- ggplot() +
+  geom_rect(aes(xmin=0, xmax=10), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=10), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=10), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=10), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.25, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.25, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.25, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.25, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=bibi2, aes(x=as.factor(x_axis), y=BIBI, fill=Year),
+           width=0.7,color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2011", "2021"), values=c("gray60", "white")) +
+  scale_x_discrete(name="Stream", labels=c((bibi2 %>% group_by(Stream) %>%
+                                              summarise(mean_bibi <- mean(BIBI)))$Stream),
+                   guide=guide_axis(angle = 40)) +
+  ylab("Benthic Index of Biotic Integrity") +
+  coord_cartesian(xlim=c(0, 9.6), ylim=c(0.8, 5), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=bibi2, aes(x=c(0.825, 1.175, 1.825, 2.175, 2.825, 3.175, 3.825,
+                                     4.175, 4.825, 5.175, 5.825, 6.175, 6.825, 7.175,
+                                     7.825, 8.175, 8.825, 9.175), 
+                                 y=BIBI, label=BIBI), position="dodge",                                      vjust=-0.5, size=3.5) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+bibi_graph
+
+```
+
+
+**Rock Creek**
+*FIBI* (corrected)
+```{r, echo=F}
+##creating fibi data frame
+rocr_fibi <- data.frame(Site=rep(c("BAKE", "BRBR", "DUOA", "FEBR", "KLVA",
+                              "LUBR", "NOST", "PHBR", "PYBR", "R630", "ROC3"), times=2),
+                        Stream=rep(c("Battery Kemble\nRun*‡", "Broad Branch", "Dumbarton Oaks*",
+                                     "Fenwick Branch", "Klingle Valley*", "Luzon Branch",
+                                     "Normanstone Branch*", "Pinehurst Branch", "Piney Branch*", 
+                                     "Reservation 630", "Rock Creek\nDownstream‡"), times=2),
+                   FIBI=c(2.3, 1, 1, 2.3, 2.3, 1.7, 1.7, 1.3, 2, 3, 2.7, 
+                          1.7, 1.3, 1.3, 2.3, 1.3, 1, 1, 1.3, 3.3, 2.3, NA),
+                   Year=c(rep("2019-22", each=11), rep("2008-09", each=11)))
+#View(rocr_fibi)
+
+##2022 values only
+rocr_fibi_2022 <- rocr_fibi %>%
+  filter(Year=="2019-22")
+
+rocr_fibi2 <- rocr_fibi %>%
+  mutate(fibi_2022=rep(c(rocr_fibi_2022$FIBI), times=2)) %>%
+  mutate(x_axis=rep(c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11), times=2))
+
+##add score column
+rocr_fibi2 <- mutate_score(rocr_fibi2, rocr_fibi2$FIBI)
+#View(rocr_fibi2)
+
+##rearrange dataframe
+rocr_fibi2 <- rocr_fibi2 %>%
+  arrange(Year) %>%
+  arrange(Stream)
+#View(rocr_fibi2)
+
+rocr_fibi_graph <- ggplot() +
+  geom_rect(aes(xmin=-0.1, xmax=12), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=-0.1, xmax=12), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=-0.1, xmax=12), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=-0.1, xmax=12), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.2, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.2, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.2, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.2, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=rocr_fibi2, aes(x=as.factor(x_axis), y=FIBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2008, *09", "2019, ‡22"), values=c("gray60", "white")) +
+  scale_x_discrete(name="Stream", labels=c((rocr_fibi2 %>% group_by(Stream) %>%
+                                              summarise(mean_fibi <- mean(FIBI)))$Stream),
+                   guide=guide_axis(angle = 40))+
+  ylab("Fish Index of Biotic Integrity") +
+  coord_cartesian(xlim=c(-0.1, 11.55), ylim=c(0.8, 5), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=rocr_fibi2, aes(x=c(0.825, 1.175, 1.825, 2.175, 2.825, 3.175, 3.825,
+                                     4.175, 4.825, 5.175, 5.825, 6.175, 6.825, 7.175,
+                                     7.825, 8.175, 8.825, 9.175, 9.825, 10.175, 10.825,
+                                     11.175), 
+                                 y=FIBI, label=FIBI), position="dodge", vjust=-0.5, size=3.5) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+rocr_fibi_graph
+
+```
+
+*BIBI*
+```{r, echo=F}
+##creating fibi data frame
+rocr_bibi <- data.frame(Site=rep(c("BAKE", "BRBR", "DUOA", "FEBR", "KLVA",
+                              "LUBR", "NOST", "PHBR", "PYBR", "R630", "ROC3"), times=2),
+                        Stream=rep(c("Battery Kemble\nRun*‡", "Broad Branch", "Dumbarton Oaks*",
+                                     "Fenwick Branch", "Klingle Valley*", "Luzon Branch",
+                                     "Normanstone Branch*", "Pinehurst Branch", "Piney Branch*", 
+                                     "Reservation 630", "Rock Creek\nDownstream‡"), times=2),
+                   BIBI=c(2, 2.67, 1.33, 2.33, 2.33, 1, 1.33, 2.33, 1.67, 2.33, 2.67, 
+                          1.67, 1.67, 2, 2, 2, 1.67, 2.33, 1, 2.33, 2, 1.67),
+                   Year=c(rep("2019-22", each=11), rep("2008-14", each=11)))
+#View(rocr_bibi)
+
+##2022 values only
+rocr_bibi_2022 <- rocr_bibi %>%
+  filter(Year=="2019-22")
+
+rocr_bibi2 <- rocr_bibi %>%
+  mutate(bibi_2022=rep(c(rocr_bibi_2022$BIBI), times=2)) %>%
+  mutate(x_axis=rep(c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11), times=2))
+
+##add score column
+rocr_bibi2 <- mutate_score(rocr_bibi2, rocr_bibi2$BIBI)
+#View(rocr_bibi2)
+
+##rearrange dataframe
+rocr_bibi2 <- rocr_bibi2 %>%
+  arrange(Year) %>%
+  arrange(Stream)
+#View(rocr_bibi2)
+
+rocr_bibi_graph <- ggplot() +
+  geom_rect(aes(xmin=-0.1, xmax=12), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=-0.1, xmax=12), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=-0.1, xmax=12), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=-0.1, xmax=12), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.2, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.2, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.2, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.2, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=rocr_bibi2, aes(x=as.factor(x_axis), y=BIBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2008, *14", "2019, ‡22"), values=c("gray60", "white")) +
+  scale_x_discrete(name="Stream", labels=c((rocr_fibi2 %>% group_by(Stream) %>%
+                                              summarise(mean_fibi <- mean(FIBI)))$Stream),
+                   guide=guide_axis(angle = 40))+
+  ylab("Benthic Index of Biotic Integrity") +
+  coord_cartesian(xlim=c(-0.1, 11.55), ylim=c(0.8, 5), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=rocr_bibi2, aes(x=c(0.825, 1.175, 1.825, 2.175, 2.825, 3.175, 3.825,
+                                     4.175, 4.825, 5.175, 5.825, 6.175, 6.825, 7.175,
+                                     7.825, 8.175, 8.825, 9.175, 9.825, 10.175, 10.825,
+                                     11.175), 
+                                 y=BIBI, label=BIBI), position="dodge", vjust=-0.5, size=3.5) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+rocr_bibi_graph
+
+```
+
+
+**Wolf Trap**
+*FIBI* (corrected)
+```{r, echo=F}
+##creating fibi dataframe
+wotr_fibi <- data.frame(Site=rep(c("CHCK", "WOTR"), times=2),
+                        Stream=rep(c("Courthouse Creek", "Wolf Trap Creek"), times=2),
+                        FIBI=c(2.7, 2.7, 3.3, 3.3),
+                        Year=c(rep("2022", each=2), rep("2012", each=2)))
+#View(wotr_fibi)
+
+##2022 values only
+wotr_fibi_2022 <- wotr_fibi %>%
+  filter(Year==2022) 
+
+##adding fibi 2022 column and number column for easy graphing
+wotr_fibi2 <- wotr_fibi %>%
+  mutate(fibi_2022=rep(c(wotr_fibi_2022$FIBI), times=2)) %>%
+  mutate(x_axis=rep(c(1, 2), times=2))
+
+##adding score column
+wotr_fibi2 <- mutate_score(wotr_fibi2, wotr_fibi2$FIBI)
+#View(wotr_fibi2)
+
+##rearrange dataframe
+wotr_fibi2 <- wotr_fibi2 %>%
+  arrange(Year) %>%
+  arrange(Stream)
+#View(wotr_fibi2)
+
+##creating fibi graph
+wotr_fibi_graph <- ggplot() +
+  geom_rect(aes(xmin=0, xmax=3), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.45, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=wotr_fibi2, aes(x=as.factor(x_axis), y=FIBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2012", "2022"), values=c("gray60", "white")) +
+  scale_x_discrete(name="Stream", labels=c((wotr_fibi2 %>% group_by(Stream) %>%
+                                              summarise(mean_fibi <- mean(FIBI)))$Stream))+
+  ylab("Fish Index of Biotic Integrity") +
+  coord_cartesian(xlim=c(0.3, 2.55), ylim=c(0.8, 5.01), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=wotr_fibi2, aes(x=c(0.825, 1.175, 1.825, 2.175), 
+                                 y=FIBI, label=FIBI), position="dodge", vjust=-0.5, size=6) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75), axis.text.x=element_text(size=16),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+wotr_fibi_graph
+
+```
+
+*BIBI*
+```{r, echo=F}
+##creating fibi dataframe
+wotr_bibi <- data.frame(Site=rep(c("CHCK", "WOTR"), times=2),
+                        Stream=rep(c("Courthouse Creek", "Wolf Trap Creek"), times=2),
+                        BIBI=c(2.33, 2.33, 2.33, 3),
+                        Year=c(rep("2022", each=2), rep("2012", each=2)))
+#View(wotr_bibi)
+
+##2022 values only
+wotr_bibi_2022 <- wotr_bibi %>%
+  filter(Year==2022) 
+
+##adding bibi 2022 column and number column for easy graphing
+wotr_bibi2 <- wotr_bibi %>%
+  mutate(bibi_2022=rep(c(wotr_bibi_2022$BIBI), times=2)) %>%
+  mutate(x_axis=rep(c(1, 2), times=2))
+
+##adding score column
+wotr_bibi2 <- mutate_score(wotr_bibi2, wotr_bibi2$BIBI)
+#View(wotr_bibi2)
+
+##rearrange dataframe
+wotr_bibi2 <- wotr_bibi2 %>%
+  arrange(Year) %>%
+  arrange(Stream)
+#View(wotr_bibi2)
+
+##rearrange dataframe
+wotr_fibi2 <- wotr_fibi2 %>%
+  arrange(Year) %>%
+  arrange(Stream)
+#View(wotr_fibi2)
+
+##creating fibi graph
+wotr_bibi_graph <- ggplot() +
+  geom_rect(aes(xmin=0, xmax=3), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
+  geom_rect(aes(xmin=0, xmax=3), ymin=1, ymax=2, fill="#f27c7e", alpha=0.5) +
+  geom_text(mapping = aes(x = 0.45, y = 4.5, label = "good"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 3.5, label = "fair"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 2.5, label = "poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_text(mapping = aes(x = 0.45, y = 1.5, label = "very poor"), color="black", size=5, angle=90, fontface="italic") +
+  geom_hline(yintercept=4, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=3, linetype="dashed", color="gray55") +
+  geom_hline(yintercept=2, linetype="dashed", color="gray55") +
+  geom_bar(data=wotr_bibi2, aes(x=as.factor(x_axis), y=BIBI, fill=Year), 
+           width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
+  scale_fill_manual(labels=c("2012", "2022"), values=c("gray60", "white")) +
+  scale_x_discrete(name="Stream", labels=c((wotr_bibi2 %>% group_by(Stream) %>%
+                                              summarise(mean_bibi <- mean(BIBI)))$Stream))+
+  ylab("Benthic Index of Biotic Integrity") +
+  coord_cartesian(xlim=c(0.3, 2.55), ylim=c(0.8, 5.01), expand=F) +
+  theme_bw(base_size=15) +
+  geom_text(data=wotr_bibi2, aes(x=c(0.825, 1.175, 1.825, 2.175), 
+                                 y=BIBI, label=BIBI), position="dodge", vjust=-0.5, size=6) +
+  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75), axis.text.x=element_text(size=16),
+        plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
+
+wotr_bibi_graph
+
+```
