@@ -993,7 +993,7 @@ rocr_fibi <- data.frame(Site=rep(c("BAKE", "BRBR", "DUOA", "FEBR", "KLVA",
                         Stream=rep(c("Battery Kemble\nRun*‡", "Broad Branch", "Dumbarton Oaks*",
                                      "Fenwick Branch", "Klingle Valley*", "Luzon Branch",
                                      "Normanstone Branch*", "Pinehurst Branch", "Piney Branch*", 
-                                     "Reservation 630", "Rock Creek\nDownstream‡"), times=2),
+                                     "Reservation 630", "Rock Creek\nDownstream of\nDumbarton Oaks‡"), times=2),
                    FIBI=c(2.3, 1, 1, 2.3, 2.3, 1.7, 1.7, 1.3, 2, 3, 2.7, 
                           1.7, 1.3, 1.3, 2.3, 1.3, 1, 1, 1.3, 3.3, 2.3, NA),
                    Year=c(rep("2019-22", each=11), rep("2008-09", each=11)))
@@ -1048,6 +1048,8 @@ rocr_fibi_graph <- ggplot() +
 
 rocr_fibi_graph
 
+#figure dimensions: 1000x650
+
 ```
 
 *BIBI*
@@ -1058,7 +1060,7 @@ rocr_bibi <- data.frame(Site=rep(c("BAKE", "BRBR", "DUOA", "FEBR", "KLVA",
                         Stream=rep(c("Battery Kemble\nRun*‡", "Broad Branch", "Dumbarton Oaks*",
                                      "Fenwick Branch", "Klingle Valley*", "Luzon Branch",
                                      "Normanstone Branch*", "Pinehurst Branch", "Piney Branch*", 
-                                     "Reservation 630", "Rock Creek\nDownstream‡"), times=2),
+                                     "Reservation 630", "Rock Creek\nDownstream of\nDumbarton Oaks‡"), times=2),
                    BIBI=c(2, 2.67, 1.33, 2.33, 2.33, 1, 1.33, 2.33, 1.67, 2.33, 2.67, 
                           1.67, 1.67, 2, 2, 2, 1.67, 2.33, 1, 2.33, 2, 1.67),
                    Year=c(rep("2019-22", each=11), rep("2008-14", each=11)))
