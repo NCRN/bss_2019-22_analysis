@@ -1133,7 +1133,7 @@ rocr <- sph %>%
                          Site=="PHBR"~"Pinehurst Branch",
                          Site=="PYBR"~"Piney Branch*",
                          Site=="R630"~"Reservation 630",
-                         Site=="ROC3"~"Rock Creek Downstream‡"))
+                         Site=="ROC3"~"Rock Creek Downstream\nof Dumbarton Oaks‡"))
 
 colnames(rocr)[5:6]=c("characteristic", "value")
 
@@ -1238,6 +1238,8 @@ rocr_habitat_graph <- ggplot() +
 
 rocr_habitat_graph
 
+##plot dimensions: 1500x2200
+
 ```
 
 ROCR embed graph
@@ -1261,7 +1263,7 @@ rocr_names <- c("Battery Kemble\nRun*‡", "Broad Branch",
                 "Dumbarton Oaks*", "Fenwick Branch", "Klingle Valley*",
                 "Luzon Branch", "Normanstone Branch*", 
                 "Pinehurst Branch", "Piney Branch*", "Reservation 630",
-                "Rock Creek\nDownstream‡")
+                "Rock Creek\nDownstream of\nDumbarton Oaks‡")
 
 rocr_embed_graph <- ggplot() +
   ##background regions
@@ -1303,6 +1305,8 @@ rocr_embed_graph <- ggplot() +
         plot.margin=margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
 
 rocr_embed_graph
+
+##plot dimensions: 1200x700
 
 ```
 
