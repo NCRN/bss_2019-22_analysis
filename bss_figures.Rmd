@@ -10,6 +10,7 @@ output: html_document
 
 library(dplyr)
 library(ggplot2)
+library(tidyr)
 
 ##score function
 mutate_score <- function(data, variable) {
@@ -22,11 +23,36 @@ mutate_score <- function(data, variable) {
 
 ```
 
-**Antietam** (FIBI corrected)
+```{r data wrangling}
+
+BIBI_scores <- read.csv("NPS_BIBI2.csv")
+
+##rows for missing data
+missing <- data.frame(SITE=c("NCRN_PRWI_BONE_2011",
+                              "NCRN_PRWI_SFQC_2011",
+                              "NCRN_PRWI_SORU_2011",
+                              "NCRN_ROCR_ROC3_2009"),
+                      BIBI=rep(NA, times=4))
+
+BIBI_scores1 <- merge(BIBI_scores, missing,
+                        by=c("SITE", 
+                             "BIBI"), all=T)
+
+BIBI_scores2 <- BIBI_scores1 %>%
+  separate(SITE, into=c("Network", "Park", "Stream", "Year")) %>%
+  filter(Year>=2008) %>%
+  mutate(Cycle=case_when(Year<2019~"1",
+                         Year>=2019~"2")) %>%
+  mutate(BIBI=round(BIBI, 2))
+
+```
+
+
+**Antietam** (FIBI and BIBI corrected)
 ```{r, echo=F}
 ##creating dataframe
 anti <- data.frame(index=rep(c("FIBI", "BIBI"), each=2),
-#                        IBI=c(3, 3, 1.75, 2),
+# old FIBI                       IBI=c(3, 3, 1.75, 2),
                         IBI=c(4.3, 4.3, 1.75, 2),
                         Year=rep(c("2013", "2022"), times=2),
                    x_axis=rep(c(1, 2), each=2))
@@ -110,9 +136,13 @@ anti_fibi_graph
 *BIBI*
 ```{r}
 ##creating bibi dataframe
-anti_bibi <- anti %>%
-  subset(index=="BIBI")
+# anti_bibi <- anti %>%
+#   subset(index=="BIBI")
 #View(anti_bibi)
+
+anti_bibi <- BIBI_scores2 %>%
+  filter(Park=="ANTI") %>%
+  mutate(x_axis=case_when(Stream=="SHCK"~1))
 
 ##creating bibi graph
 anti_bibi_graph <- ggplot() +
@@ -127,7 +157,7 @@ anti_bibi_graph <- ggplot() +
   geom_hline(yintercept=4, linetype="dashed", color="gray55") +
   geom_hline(yintercept=3, linetype="dashed", color="gray55") +
   geom_hline(yintercept=2, linetype="dashed", color="gray55") +
-  geom_bar(data=anti_bibi, aes(x=as.factor(x_axis), y=IBI, fill=Year), 
+  geom_bar(data=anti_bibi, aes(x=as.factor(x_axis), y=BIBI, fill=Year), 
            width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
   scale_fill_manual(labels=c("2013", "2022"), values=c("gray60", "white")) +
   scale_x_discrete(label="") +
@@ -135,8 +165,8 @@ anti_bibi_graph <- ggplot() +
   xlab("Sharpsburg Creek") +
   coord_cartesian(xlim=c(0.4, 1.5), ylim=c(0.8, 5), expand=F) +
   theme_bw(base_size=15) +
-  geom_text(data=anti_bibi, aes(x=c(0.825, 1.175), 
-                                 y=IBI, label=IBI), position="dodge", vjust=-0.5, size=6) +
+  geom_text(data=anti_bibi, aes(x=as.factor(x_axis), 
+                                 y=BIBI, group=Year, label=BIBI), position=position_dodge2(width=0.7, preserve="total"), vjust=-0.5, size=6) +
   theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=15, vjust=4), axis.text.x=element_text(size=14),
         axis.ticks.x=element_blank(),
         plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
@@ -202,29 +232,38 @@ cato_fibi_graph
 
 ```
 
-*BIBI*
+*BIBI* (correct)
 ```{r, echo=F}
 ##creating bibi dataframe
-cato_bibi <- data.frame(Site=rep(c("BGHC", "BLBZ", "OWCK"), times=2),
-                        Stream=rep(c("Big Hunting\nCreek", "Blue Blazes\nCreek", "Owens Creek"), times=2),
-                        BIBI=c(3.5, 2.75, 3.75, 3.5, 4.5, 3.5),
-                        Year=c(rep("2022", each=3), rep("2010", each=3)))
+# cato_bibi <- data.frame(Site=rep(c("BGHC", "BLBZ", "OWCK"), times=2),
+#                         Stream=rep(c("Big Hunting\nCreek", "Blue Blazes\nCreek", "Owens Creek"), times=2),
+#                         BIBI=c(3.5, 2.75, 3.75, 3.5, 4.5, 3.5),
+#                         Year=c(rep("2022", each=3), rep("2010", each=3)))
 #View(cato_bibi)
+
+cato_bibi <- BIBI_scores2 %>%
+  filter(Park=="CATO") %>%
+  mutate(x_axis=case_when(Stream=="BGHC"~1,
+                          Stream=="BLBZ"~2,
+                          Stream=="OWCK"~3)) %>%
+  mutate(stream_name=case_when(Stream=="BGHC"~"Big Hunting\nCreek",
+                               Stream=="BLBZ"~"Blue Blazes\nCreek",
+                               Stream=="OWCK"~"Owens Creek"))
 
 
 ##adding bibi 2022 column and number column for easy graphing
-cato_bibi2 <- cato_bibi %>%
-  mutate(bibi_2022=rep(c(3.5, 2.75, 3.75), times=2)) %>%
-  mutate(x_axis=rep(c(1, 2, 3), times=2))
+# cato_bibi2 <- cato_bibi %>%
+#   mutate(bibi_2022=rep(c(3.5, 2.75, 3.75), times=2)) %>%
+#   mutate(x_axis=rep(c(1, 2, 3), times=2))
 
 ##adding score column
-cato_bibi2 <- mutate_score(cato_bibi2, cato_bibi2$BIBI)
+# cato_bibi2 <- mutate_score(cato_bibi2, cato_bibi2$BIBI)
 #View(cato_bibi2)
 
 ##rearramge dataframe
-cato_bibi2 <- cato_bibi2 %>%
-  arrange(Year) %>%
-  arrange(Stream)
+# cato_bibi2 <- cato_bibi2 %>%
+#   arrange(Year) %>%
+#   arrange(Stream)
 #View(cato_bibi2)
 
 ##creating bibi graph
@@ -240,16 +279,16 @@ cato_bibi_graph <- ggplot() +
   geom_hline(yintercept=4, linetype="dashed", color="gray55") +
   geom_hline(yintercept=3, linetype="dashed", color="gray55") +
   geom_hline(yintercept=2, linetype="dashed", color="gray55") +
-  geom_bar(data=cato_bibi2, aes(x=as.factor(x_axis), y=BIBI, fill=Year), 
+  geom_bar(data=cato_bibi, aes(x=as.factor(x_axis), y=BIBI, fill=Year), 
            width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
   scale_fill_manual(labels=c("2010", "2022"), values=c("gray60", "white")) +
-  scale_x_discrete(name="Stream", labels=c((cato_bibi2 %>% group_by(Stream) %>%
-                                              summarise(mean_bibi <- mean(BIBI)))$Stream))+
+  scale_x_discrete(name="Stream", labels=c((cato_bibi %>% group_by(stream_name) %>%
+                                              summarise(mean_bibi <- mean(BIBI)))$stream_name))+
   ylab("Benthic Index of Biotic Integrity") +
   coord_cartesian(xlim=c(0.2, 3.6), ylim=c(0.8, 5), expand=F) +
   theme_bw(base_size=15) +
-  geom_text(data=cato_bibi2, aes(x=c(0.825, 1.175, 1.825, 2.175, 2.825, 3.175), 
-                                 y=BIBI, label=BIBI), position="dodge", vjust=-0.5, size=5) +
+  geom_text(data=cato_bibi, aes(x=as.factor(x_axis), y=BIBI,
+                                group=Year, label=BIBI), position=position_dodge2(width=0.7, preserve="total"), vjust=-0.5, size=5) +
   theme(axis.title.y=element_text(size=20, vjust=+3),
         axis.title.x=element_text(size=20, vjust=-0.75),
         axis.text.x=element_text(size=14),
@@ -324,30 +363,41 @@ gwmp_fibi_graph
 *BIBI*
 ```{r, echo=F}
 ##creating fibi dataframe
-gwmp_bibi <- data.frame(Site=rep(c("MIRU", "MICR", "PIRU", "TURU"), times=2),
-                        Stream=rep(c("Mine Run", "Minnehaha\nCreek*", "Pimmit Run", "Turkey Run"), times=2),
-                        BIBI=c(4, 2, 2, 2, 4, 2.33, 2.33, 1.33),
-                        Year=c(rep("2022", each=4), rep("2012", each=4)))
+# gwmp_bibi <- data.frame(Site=rep(c("MIRU", "MICR", "PIRU", "TURU"), times=2),
+#                         Stream=rep(c("Mine Run", "Minnehaha\nCreek*", "Pimmit Run", "Turkey Run"), times=2),
+#                         BIBI=c(4, 2, 2, 2, 4, 2.33, 2.33, 1.33),
+#                         Year=c(rep("2022", each=4), rep("2012", each=4)))
 #View(gwmp_bibi)
 
+gwmp_bibi <- BIBI_scores2 %>%
+  filter(Park=="GWMP") %>%
+  mutate(x_axis=case_when(Stream=="MIRU"~1,
+                          Stream=="MICR"~2,
+                          Stream=="PIRU"~3,
+                          Stream=="TURU"~4)) %>%
+  mutate(stream_name=case_when(Stream=="MIRU"~"Mine Run",
+                               Stream=="MICR"~"Minnehaha\nCreek*",
+                               Stream=="PIRU"~"Pimmit Run",
+                               Stream=="TURU"~"Turkey Run"))
+
 ##adding bibi 2022 column and number column for easy graphing
-gwmp_bibi2 <- gwmp_bibi %>%
-  mutate(bibi_2022=rep(c(4, 2, 2, 2), times=2)) %>%
-  mutate(x_axis=rep(c(1, 2, 3, 4), times=2))
+# gwmp_bibi2 <- gwmp_bibi %>%
+#   mutate(bibi_2022=rep(c(4, 2, 2, 2), times=2)) %>%
+#   mutate(x_axis=rep(c(1, 2, 3, 4), times=2))
 
 ##adding score column
-gwmp_bibi2 <- mutate_score(gwmp_bibi2, gwmp_bibi2$BIBI)
+# gwmp_bibi2 <- mutate_score(gwmp_bibi2, gwmp_bibi2$BIBI)
 #View(gwmp_bibi2)
 
 ##Label column
-gwmp_bibi_labels <- gwmp_bibi2 %>%
-  arrange(Year) %>%
-  arrange(Stream)
+# gwmp_bibi_labels <- gwmp_bibi2 %>%
+#   arrange(Year) %>%
+#   arrange(Stream)
+# 
+# labels <- as.list(gwmp_bibi_labels$BIBI)
+# labels
 
-labels <- as.list(gwmp_bibi_labels$BIBI)
-labels
-
-gwmp_bibi2$labels <- c(labels)
+# gwmp_bibi2$labels <- c(labels)
 #View(gwmp_bibi2)
 
 ##creating bibi graph
@@ -363,17 +413,16 @@ gwmp_bibi_graph <- ggplot() +
   geom_hline(yintercept=4, linetype="dashed", color="gray55") +
   geom_hline(yintercept=3, linetype="dashed", color="gray55") +
   geom_hline(yintercept=2, linetype="dashed", color="gray55") +
-  geom_bar(data=gwmp_bibi2, aes(x=as.factor(x_axis), y=BIBI, fill=Year), 
+  geom_bar(data=gwmp_bibi, aes(x=as.factor(x_axis), y=BIBI, fill=Cycle), 
            width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
   scale_fill_manual(labels=c("2012 (*2014)", "2022"), values=c("gray60", "white")) +
-  scale_x_discrete(name="Stream", labels=c((gwmp_bibi2 %>% group_by(Stream) %>%
-                                              summarise(mean_bibi <- mean(BIBI)))$Stream))+
+  scale_x_discrete(name="Stream", labels=c((gwmp_bibi %>% group_by(stream_name) %>%
+                                              summarise(mean_bibi <- mean(BIBI)))$stream_name))+
   ylab("Benthic Index of Biotic Integrity") +
   coord_cartesian(xlim=c(0.1, 4.6), ylim=c(0.8, 5), expand=F) +
   theme_bw(base_size=15) +
-  geom_text(data=gwmp_bibi2, aes(x=c(0.825, 1.175, 1.825, 2.175, 2.825, 3.175,
-                                     3.825, 4.175), 
-                                 y=as.numeric(labels), label=labels), position="dodge", vjust=-0.5, size=4.75) +
+  geom_text(data=gwmp_bibi, aes(x=as.factor(x_axis), y=BIBI,
+                                group=Year, label=BIBI), position=position_dodge2(width=0.7, preserve="total"), vjust=-0.5, size=4.75) +
   theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75), axis.text.x=element_text(size=14),
         plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
 
@@ -382,7 +431,7 @@ gwmp_bibi_graph
 ```
 
 
-**Harpers Ferry** (FIBI correct)
+**Harpers Ferry** (FIBI and BIBI correct)
 ```{r, echo=F}
 ##creating dataframe
 hafe <- data.frame(index=rep(c("FIBI", "BIBI"), each=2),
@@ -466,9 +515,13 @@ hafe_fibi_graph
 *BIBI*
 ```{r}
 ##creating bibi dataframe
-hafe_bibi <- hafe %>%
-  subset(index=="BIBI")
+# hafe_bibi <- hafe %>%
+#   subset(index=="BIBI")
 #View(hafe_bibi)
+
+hafe_bibi <- BIBI_scores2 %>%
+  filter(Park=="HAFE") %>%
+  mutate(x_axis=case_when(Stream=="FLSP"~1)) 
 
 ##creating bibi graph
 hafe_bibi_graph <- ggplot() +
@@ -483,7 +536,7 @@ hafe_bibi_graph <- ggplot() +
   geom_hline(yintercept=4, linetype="dashed", color="gray55") +
   geom_hline(yintercept=3, linetype="dashed", color="gray55") +
   geom_hline(yintercept=2, linetype="dashed", color="gray55") +
-  geom_bar(data=hafe_bibi, aes(x=as.factor(x_axis), y=IBI, fill=Year), 
+  geom_bar(data=hafe_bibi, aes(x=as.factor(x_axis), y=BIBI, fill=Year), 
            width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
   scale_fill_manual(labels=c("2013", "2022"), values=c("gray60", "white")) +
   scale_x_discrete(label="") +
@@ -491,8 +544,8 @@ hafe_bibi_graph <- ggplot() +
   xlab("Flowing Springs Run") +
   coord_cartesian(xlim=c(0.4, 1.5), ylim=c(0.8, 5), expand=F) +
   theme_bw(base_size=15) +
-  geom_text(data=hafe_bibi, aes(x=c(0.825, 1.175), 
-                                 y=IBI, label=IBI), position="dodge", vjust=-0.5, size=6) +
+  geom_text(data=hafe_bibi, aes(x=as.factor(x_axis), 
+                                 y=BIBI, group=Year, label=BIBI), position=position_dodge2(width=0.7, preserve="total"), vjust=-0.5, size=6) +
   theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=15, vjust=4), axis.text.x=element_text(size=14),
         axis.ticks.x=element_blank(),
         plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
@@ -502,7 +555,7 @@ hafe_bibi_graph
 ```
 
 
-**Manassas** (FIBI corrected)
+**Manassas** (FIBI and BIBI corrected)
 ```{r, echo=F}
 ##creating dataframe
 mana <- data.frame(index=rep(c("FIBI", "BIBI"), each=2),
@@ -588,9 +641,13 @@ mana_fibi_graph
 *BIBI*
 ```{r}
 ##creating bibi dataframe
-mana_bibi <- mana %>%
-  subset(index=="BIBI")
+# mana_bibi <- mana %>%
+#   subset(index=="BIBI")
 #View(mana_bibi)
+
+mana_bibi <- BIBI_scores2 %>%
+  filter(Park=="MANA") %>%
+  mutate(x_axis=case_when(Stream=="YOBR"~1))
 
 ##creating bibi graph
 mana_bibi_graph <- ggplot() +
@@ -605,7 +662,7 @@ mana_bibi_graph <- ggplot() +
   geom_hline(yintercept=4, linetype="dashed", color="gray55") +
   geom_hline(yintercept=3, linetype="dashed", color="gray55") +
   geom_hline(yintercept=2, linetype="dashed", color="gray55") +
-  geom_bar(data=mana_bibi, aes(x=as.factor(x_axis), y=IBI, fill=Year), 
+  geom_bar(data=mana_bibi, aes(x=as.factor(x_axis), y=BIBI, fill=Year), 
            width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
   scale_fill_manual(labels=c("2010", "2022"), values=c("gray60", "white")) +
   scale_x_discrete(label="") +
@@ -613,8 +670,8 @@ mana_bibi_graph <- ggplot() +
   xlab("Young's Branch") +
   coord_cartesian(xlim=c(0.4, 1.5), ylim=c(0.8, 5), expand=F) +
   theme_bw(base_size=15) +
-  geom_text(data=mana_bibi, aes(x=c(0.825, 1.175), 
-                                 y=IBI, label=IBI), position="dodge", vjust=-0.5, size=6) +
+  geom_text(data=mana_bibi, aes(x=as.factor(x_axis), 
+                                 y=BIBI, group=Year, label=BIBI), position=position_dodge2(width=0.7, preserve="total"), vjust=-0.5, size=6) +
   theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=15, vjust=4), axis.text.x=element_text(size=14),
         axis.ticks.x=element_blank(),
         plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
@@ -686,32 +743,39 @@ mono_fibi_graph
 
 ```
 
-*BIBI*
+*BIBI* (corrected)
 ```{r, echo=F}
 ##creating fibi dataframe
-mono_bibi <- data.frame(Site=rep(c("BUCK", "GAMI"), times=2),
-                        Stream=rep(c("Bush Creek", "Gambrill Mill Creek"), times=2),
-                        BIBI=c(2, 4, 3.33, 1.67),
-                        Year=c(rep("2022", each=2), rep("2010", each=2)))
+# mono_bibi <- data.frame(Site=rep(c("BUCK", "GAMI"), times=2),
+#                         Stream=rep(c("Bush Creek", "Gambrill Mill Creek"), times=2),
+#                         BIBI=c(2, 4, 3.33, 1.67),
+#                         Year=c(rep("2022", each=2), rep("2010", each=2)))
 #View(mono_bibi)
 
+mono_bibi <- BIBI_scores2 %>%
+  filter(Park=="MONO") %>%
+  mutate(x_axis=case_when(Stream=="BUCK"~1,
+                          Stream=="GAMI"~2)) %>%
+  mutate(stream_name=case_when(Stream=="BUCK"~"Bush Creek",
+                               Stream=="GAMI"~"Gambrill Mill Creek"))
+
 ##2022 values only
-mono_bibi_2022 <- mono_bibi %>%
-  filter(Year==2022) 
+# mono_bibi_2022 <- mono_bibi %>%
+#   filter(Year==2022) 
 
 ##adding bibi 2022 column and number column for easy graphing
-mono_bibi2 <- mono_bibi %>%
-  mutate(bibi_2022=rep(c(mono_bibi_2022$BIBI), times=2)) %>%
-  mutate(x_axis=rep(c(1, 2), times=2))
+# mono_bibi2 <- mono_bibi %>%
+#   mutate(bibi_2022=rep(c(mono_bibi_2022$BIBI), times=2)) %>%
+#   mutate(x_axis=rep(c(1, 2), times=2))
 
 ##adding score column
-mono_bibi2 <- mutate_score(mono_bibi2, mono_bibi2$BIBI)
-#View(mono_bibi2)
-
-##rearrange dataframe 
-mono_bibi2 <- mono_bibi2 %>%
-  arrange(Year) %>%
-  arrange(Stream)
+# mono_bibi2 <- mutate_score(mono_bibi2, mono_bibi2$BIBI)
+# #View(mono_bibi2)
+# 
+# ##rearrange dataframe 
+# mono_bibi2 <- mono_bibi2 %>%
+#   arrange(Year) %>%
+#   arrange(Stream)
 #View(mono_bibi2)
 
 ##creating bibi graph
@@ -727,17 +791,16 @@ mono_bibi_graph <- ggplot() +
   geom_hline(yintercept=4, linetype="dashed", color="gray55") +
   geom_hline(yintercept=3, linetype="dashed", color="gray55") +
   geom_hline(yintercept=2, linetype="dashed", color="gray55") +
-  geom_bar(data=mono_bibi2, aes(x=as.factor(x_axis), y=BIBI, fill=Year), 
+  geom_bar(data=mono_bibi, aes(x=as.factor(x_axis), y=BIBI, fill=Year), 
            width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
   scale_fill_manual(labels=c("2010", "2022"), values=c("gray60", "white")) +
-  scale_x_discrete(name="Stream", labels=c((mono_bibi2 %>% group_by(Stream) %>%
-                                              summarise(mean_bibi <- mean(BIBI)))$Stream))+
+  scale_x_discrete(name="Stream", labels=c((mono_bibi %>% group_by(stream_name) %>%
+                                              summarise(mean_bibi <- mean(BIBI)))$stream_name))+
   ylab("Benthic Index of Biotic Integrity") +
   coord_cartesian(xlim=c(0.3, 2.55), ylim=c(0.8, 5.01), expand=F) +
   theme_bw(base_size=15) +
-  geom_text(data=mono_bibi2, aes(x=c(0.825, 1.175, 1.825, 2.175), 
-                                 y=BIBI, label=BIBI), 
-                                 position="dodge", vjust=-0.5, size=6) +
+  geom_text(data=mono_bibi, aes(x=as.factor(x_axis), y=BIBI,
+                                group=Year, label=BIBI), position=position_dodge2(width=0.7, preserve="total"), vjust=-0.5, size=6) +
   theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75), axis.text.x=element_text(size=16),
         plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
 
@@ -808,32 +871,42 @@ nace_fibi_graph
 
 ```
 
-*BIBI*
+*BIBI* (corrected)
 ```{r, echo=F}
 ##creating fibi dataframe
-nace_bibi <- data.frame(Site=rep(c("HECR", "OXRU", "STCK"), times=2),
-                        Stream=rep(c("Henson Creek", "Oxon Run", "Still Creek"), times=2),
-                        BIBI=c(3.29, 1.57, 2.71, 3, 2.71, 3.86),
-                        Year=c(rep("2022", each=3), rep("2013", each=3)))
+# nace_bibi <- data.frame(Site=rep(c("HECR", "OXRU", "STCK"), times=2),
+#                         Stream=rep(c("Henson Creek", "Oxon Run", "Still Creek"), times=2),
+#                         BIBI=c(3.29, 1.57, 2.71, 3, 2.71, 3.86),
+#                         Year=c(rep("2022", each=3), rep("2013", each=3)))
 #View(nace_bibi)
 
+nace_bibi <- BIBI_scores2 %>%
+  filter(Park=="NACE") %>%
+  filter(Stream!="ACCK") %>%
+  mutate(x_axis=case_when(Stream=="HECR"~1,
+                          Stream=="OXRU"~2,
+                          Stream=="STCK"~3)) %>%
+  mutate(stream_name=case_when(Stream=="HECR"~"Henson Creek",
+                               Stream=="OXRU"~"Oxon Run",
+                               Stream=="STCK"~"Still Creek"))
+
 ##2022 values only
-nace_bibi_2022 <- nace_bibi %>%
-  filter(Year==2022) 
+# nace_bibi_2022 <- nace_bibi %>%
+#   filter(Year==2022) 
 
 ##adding bibi 2022 column and number column for easy graphing
-nace_bibi2 <- nace_bibi %>%
-  mutate(bibi_2022=rep(c(nace_bibi_2022$BIBI), times=2)) %>%
-  mutate(x_axis=rep(c(1, 2, 3), times=2))
+# nace_bibi2 <- nace_bibi %>%
+#   mutate(bibi_2022=rep(c(nace_bibi_2022$BIBI), times=2)) %>%
+#   mutate(x_axis=rep(c(1, 2, 3), times=2))
 
 ##adding score column
-nace_bibi2 <- mutate_score(nace_bibi2, nace_bibi2$BIBI)
+
 #View(nace_bibi2)
 
 ##rearrange dataframe
-nace_bibi2 <- nace_bibi2 %>%
-  arrange(Year) %>%
-  arrange(Stream)
+# nace_bibi2 <- nace_bibi2 %>%
+#   arrange(Year) %>%
+#   arrange(Stream)
 #View(nace_bibi2)
 
 ##creating bibi graph
@@ -849,17 +922,16 @@ nace_bibi_graph <- ggplot() +
   geom_hline(yintercept=4, linetype="dashed", color="gray55") +
   geom_hline(yintercept=3, linetype="dashed", color="gray55") +
   geom_hline(yintercept=2, linetype="dashed", color="gray55") +
-  geom_bar(data=nace_bibi2, aes(x=as.factor(x_axis), y=BIBI, fill=Year), 
+  geom_bar(data=nace_bibi, aes(x=as.factor(x_axis), y=BIBI, fill=Year), 
            width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
   scale_fill_manual(labels=c("2013", "2022"), values=c("gray60", "white")) +
-  scale_x_discrete(name="Stream", labels=c((nace_bibi2 %>% group_by(Stream) %>%
-                                              summarise(mean_bibi <- mean(BIBI)))$Stream))+
+  scale_x_discrete(name="Stream", labels=c((nace_bibi %>% group_by(stream_name) %>%
+                                              summarise(mean_bibi <- mean(BIBI)))$stream_name))+
   ylab("Benthic Index of Biotic Integrity") +
   coord_cartesian(xlim=c(0.2, 3.6), ylim=c(0.8, 5), expand=F) +
   theme_bw(base_size=15) +
-  geom_text(data=nace_bibi2, aes(x=c(0.825, 1.175, 1.825, 2.175, 2.825, 3.175), 
-                                 y=BIBI, label=BIBI), 
-                                 position="dodge", vjust=-0.5, size=6) +
+  geom_text(data=nace_bibi, aes(x=as.factor(x_axis), y=BIBI,
+                                group=Year, label=BIBI), position=position_dodge2(width=0.7, preserve="total"), vjust=-0.5, size=6) +
   theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75), axis.text.x=element_text(size=15),
         plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
 
@@ -933,35 +1005,58 @@ fibi_graph
 
 ```
 
-*BIBI*
+*BIBI* (corrected)
 ```{r, echo=F}
 ##creating bibi dataframe
-bibi <- data.frame(Site=rep(c("BONE", "CARU", "MBBR", "MARU", "NFQC",
-                              "ORRU", "SFQC", "SORU", "TARU"), times=2),
-                   Stream=rep(c("Boneyard Run", "Carters Run", "Mary Byrd\nBranch", 
-                                "Mawavi Run", "North Fork\nQuantico Creek", "Orenda Run",
-                                "South Fork\nQuantico Creek", "Sow Run", "Taylor Run"),
-                              times=2),
-                   BIBI=c(2.67, 3.33, 4.67, 3, 3.33, 3.33, 4.33, 3.33, 4.67, NA, 2.67, 4.33, 4.67, 4.67, 3.67, NA, NA, 4.33),
-                   Score=c("poor", "fair", "fair", "a_good", "fair", "fair", "a_good", "fair", "a_good", rep("z_none", each=9)),
-                   Year=c(rep("2021", each=9), rep("2011", each=9)))
-#View(bibi)
+# bibi <- data.frame(Site=rep(c("BONE", "CARU", "MBBR", "MARU", "NFQC",
+#                               "ORRU", "SFQC", "SORU", "TARU"), times=2),
+#                    Stream=rep(c("Boneyard Run", "Carters Run", "Mary Byrd\nBranch", 
+#                                 "Mawavi Run", "North Fork\nQuantico Creek", "Orenda Run",
+#                                 "South Fork\nQuantico Creek", "Sow Run", "Taylor Run"),
+#                               times=2),
+#                    BIBI=c(2.67, 3.33, 4.67, 3, 3.33, 3.33, 4.33, 3.33, 4.67, NA, 2.67, 4.33, 4.67, 4.67, 3.67, NA, NA, 4.33),
+#                    Score=c("poor", "fair", "fair", "a_good", "fair", "fair", "a_good", "fair", "a_good", rep("z_none", each=9)),
+#                    Year=c(rep("2021", each=9), rep("2011", each=9)))
+# #View(bibi)
+
+prwi_bibi <- BIBI_scores2 %>%
+  filter(Park=="PRWI") %>%
+  filter(Stream!="MBCH") %>%
+  filter(Stream!="NOBR") %>%
+  mutate(x_axis=case_when(Stream=="BONE"~1,
+                          Stream=="CARU"~2,
+                          Stream=="MBBR"~3,
+                          Stream=="MARU"~4,
+                          Stream=="NFQC"~5,
+                          Stream=="ORRU"~6,
+                          Stream=="SFQC"~7,
+                          Stream=="SORU"~8,
+                          Stream=="TARU"~9)) %>%
+  mutate(stream_name=case_when(Stream=="BONE"~"Boneyard Run",
+                               Stream=="CARU"~"Carters Run",
+                               Stream=="MBBR"~"Mary Byrd\nBranch",
+                               Stream=="MARU"~"Mawavi Run",
+                               Stream=="NFQC"~"North Fork\nQuantico Creek",
+                               Stream=="ORRU"~"Orenda Run",
+                               Stream=="SFQC"~"South Fork\nQuantico Creek",
+                               Stream=="SORU"~"Sow Run",
+                               Stream=="TARU"~"Taylor Run"))
 
 
 ##adding bibi 2021 column and number column for easy graphing
-bibi2 <- bibi %>%
-  mutate(bibi_2021=rep(c(2.67, 3.33, 4.67, 3, 3.33, 3.33, 4.33, 3.33, 4.67), times=2)) %>%
-  mutate(x_axis=rep(c(1, 2, 3, 4, 5, 6, 7, 8, 9), times=2))
+# bibi2 <- bibi %>%
+#   mutate(bibi_2021=rep(c(2.67, 3.33, 4.67, 3, 3.33, 3.33, 4.33, 3.33, 4.67), times=2)) %>%
+#   mutate(x_axis=rep(c(1, 2, 3, 4, 5, 6, 7, 8, 9), times=2))
 #View(bibi2)
 
-##rearrange dataframe
-bibi2 <- bibi2 %>%
-  arrange(Year) %>%
-  arrange(Stream)
+# ##rearrange dataframe
+# bibi2 <- bibi2 %>%
+#   arrange(Year) %>%
+#   arrange(Stream)
 #View(bibi2)
 
 ##creating bibi graph
-bibi_graph <- ggplot() +
+prwi_bibi_graph <- ggplot() +
   geom_rect(aes(xmin=0, xmax=10), ymin=4, ymax=5, fill="#7dc7ff", alpha=0.5) +
   geom_rect(aes(xmin=0, xmax=10), ymin=3, ymax=4, fill="#8ba7d6", alpha=0.5) +
   geom_rect(aes(xmin=0, xmax=10), ymin=2, ymax=3, fill="#cf93b6", alpha=0.5) +
@@ -973,23 +1068,21 @@ bibi_graph <- ggplot() +
   geom_hline(yintercept=4, linetype="dashed", color="gray55") +
   geom_hline(yintercept=3, linetype="dashed", color="gray55") +
   geom_hline(yintercept=2, linetype="dashed", color="gray55") +
-  geom_bar(data=bibi2, aes(x=as.factor(x_axis), y=BIBI, fill=Year),
+  geom_bar(data=prwi_bibi, aes(x=as.factor(x_axis), y=BIBI, fill=Year),
            width=0.7,color="black", size=0.8, position="dodge", stat="identity") +
   scale_fill_manual(labels=c("2011", "2021"), values=c("gray60", "white")) +
-  scale_x_discrete(name="Stream", labels=c((bibi2 %>% group_by(Stream) %>%
-                                              summarise(mean_bibi <- mean(BIBI)))$Stream),
+  scale_x_discrete(name="Stream", labels=c((prwi_bibi %>% group_by(stream_name) %>%
+                                              summarise(mean_bibi <- mean(BIBI)))$stream_name),
                    guide=guide_axis(angle = 40)) +
   ylab("Benthic Index of Biotic Integrity") +
   coord_cartesian(xlim=c(0, 9.6), ylim=c(0.8, 5), expand=F) +
   theme_bw(base_size=15) +
-  geom_text(data=bibi2, aes(x=c(0.825, 1.175, 1.825, 2.175, 2.825, 3.175, 3.825,
-                                     4.175, 4.825, 5.175, 5.825, 6.175, 6.825, 7.175,
-                                     7.825, 8.175, 8.825, 9.175), 
-                                 y=BIBI, label=BIBI), position="dodge",                                      vjust=-0.5, size=4.5) +
+  geom_text(data=prwi_bibi, aes(x=as.factor(x_axis), y=BIBI,
+                                group=Year, label=BIBI), position=position_dodge2(width=0.7, preserve="total"), vjust=-0.5, size=4.5) +
   theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75),
         plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
 
-bibi_graph
+prwi_bibi_graph
 
 ```
 
@@ -1062,36 +1155,62 @@ rocr_fibi_graph
 
 ```
 
-*BIBI*
+*BIBI* (corrected)
 ```{r, echo=F}
 ##creating fibi data frame
-rocr_bibi <- data.frame(Site=rep(c("BAKE", "BRBR", "DUOA", "FEBR", "KLVA",
-                              "LUBR", "NOST", "PHBR", "PYBR", "R630", "ROC3"), times=2),
-                        Stream=rep(c("Battery Kemble\nRun*‡", "Broad Branch", "Dumbarton Oaks*",
-                                     "Fenwick Branch", "Klingle Valley*", "Luzon Branch",
-                                     "Normanstone Branch*", "Pinehurst Branch", "Piney Branch*", 
-                                     "Reservation 630", "Rock Creek\nDownstream of\nDumbarton Oaks‡"), times=2),
-                   BIBI=c(2, 2.67, 1.33, 2.33, 2.33, 1, 1.33, 2.33, 1.67, 2.33, 2.67, 
-                          1.67, 1.67, 2, 2, 2, 1.67, 2.33, 1, 2.33, 2, 1.67),
-                   Year=c(rep("2019-22", each=11), rep("2008-14", each=11)))
-#View(rocr_bibi)
+# rocr_bibi <- data.frame(Site=rep(c("BAKE", "BRBR", "DUOA", "FEBR", "KLVA",
+#                               "LUBR", "NOST", "PHBR", "PYBR", "R630", "ROC3"), times=2),
+#                         Stream=rep(c("Battery Kemble\nRun*‡", "Broad Branch", "Dumbarton Oaks*",
+#                                      "Fenwick Branch", "Klingle Valley*", "Luzon Branch",
+#                                      "Normanstone Branch*", "Pinehurst Branch", "Piney Branch*", 
+#                                      "Reservation 630", "Rock Creek\nDownstream of\nDumbarton Oaks‡"), times=2),
+#                    BIBI=c(2, 2.67, 1.33, 2.33, 2.33, 1, 1.33, 2.33, 1.67, 2.33, 2.67, 
+#                           1.67, 1.67, 2, 2, 2, 1.67, 2.33, 1, 2.33, 2, 1.67),
+#                    Year=c(rep("2019-22", each=11), rep("2008-14", each=11)))
+# #View(rocr_bibi)
+
+rocr_bibi <- BIBI_scores2 %>%
+  filter(Park=="ROCR") %>%
+  filter(Stream!="SVPS") %>%
+  mutate(x_axis=case_when(Stream=="BAKE"~1,
+                          Stream=="BRBR"~2,
+                          Stream=="DUOA"~3,
+                          Stream=="FEBR"~4,
+                          Stream=="KLVA"~5,
+                          Stream=="LUBR"~6,
+                          Stream=="NOST"~7,
+                          Stream=="PHBR"~8,
+                          Stream=="PYBR"~9,
+                          Stream=="R630"~10,
+                          Stream=="ROC3"~11)) %>%
+  mutate(stream_name=case_when(Stream=="BAKE"~"Battery Kemble\nRun*‡",
+                               Stream=="BRBR"~"Broad Branch",
+                               Stream=="DUOA"~"Dumbarton Oaks*",
+                               Stream=="FEBR"~"Fenwick Branch",
+                               Stream=="KLVA"~"Klingle Valley*",
+                               Stream=="LUBR"~"Luzon Branch",
+                               Stream=="NOST"~"Normanstone Branch*",
+                               Stream=="PHBR"~"Pinehurst Branch",
+                               Stream=="PYBR"~"Piney Branch*",
+                               Stream=="R630"~"Reservation 630",
+                               Stream=="ROC3"~"Rock Creek\nDownstream of\nDumbarton Oaks‡"))
 
 ##2022 values only
-rocr_bibi_2022 <- rocr_bibi %>%
-  filter(Year=="2019-22")
-
-rocr_bibi2 <- rocr_bibi %>%
-  mutate(bibi_2022=rep(c(rocr_bibi_2022$BIBI), times=2)) %>%
-  mutate(x_axis=rep(c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11), times=2))
-
-##add score column
-rocr_bibi2 <- mutate_score(rocr_bibi2, rocr_bibi2$BIBI)
+# rocr_bibi_2022 <- rocr_bibi %>%
+#   filter(Year=="2019-22")
+# 
+# rocr_bibi2 <- rocr_bibi %>%
+#   mutate(bibi_2022=rep(c(rocr_bibi_2022$BIBI), times=2)) %>%
+#   mutate(x_axis=rep(c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11), times=2))
+# 
+# ##add score column
+# rocr_bibi2 <- mutate_score(rocr_bibi2, rocr_bibi2$BIBI)
 #View(rocr_bibi2)
 
-##rearrange dataframe
-rocr_bibi2 <- rocr_bibi2 %>%
-  arrange(Year) %>%
-  arrange(Stream)
+# ##rearrange dataframe
+# rocr_bibi2 <- rocr_bibi2 %>%
+#   arrange(Year) %>%
+#   arrange(Stream)
 #View(rocr_bibi2)
 
 rocr_bibi_graph <- ggplot() +
@@ -1106,20 +1225,17 @@ rocr_bibi_graph <- ggplot() +
   geom_hline(yintercept=4, linetype="dashed", color="gray55") +
   geom_hline(yintercept=3, linetype="dashed", color="gray55") +
   geom_hline(yintercept=2, linetype="dashed", color="gray55") +
-  geom_bar(data=rocr_bibi2, aes(x=as.factor(x_axis), y=BIBI, fill=Year), 
+  geom_bar(data=rocr_bibi, aes(x=as.factor(x_axis), y=BIBI, fill=Cycle), 
            width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
   scale_fill_manual(labels=c("2008, *14", "2019, ‡22"), values=c("gray60", "white")) +
-  scale_x_discrete(name="Stream", labels=c((rocr_fibi2 %>% group_by(Stream) %>%
-                                              summarise(mean_fibi <- mean(FIBI)))$Stream),
+  scale_x_discrete(name="Stream", labels=c((rocr_bibi %>% group_by(stream_name) %>%
+                                              summarise(mean_bibi <- mean(BIBI)))$stream_name),
                    guide=guide_axis(angle = 40))+
   ylab("Benthic Index of Biotic Integrity") +
   coord_cartesian(xlim=c(-0.1, 11.55), ylim=c(0.8, 5), expand=F) +
   theme_bw(base_size=15) +
-  geom_text(data=rocr_bibi2, aes(x=c(0.825, 1.175, 1.825, 2.175, 2.825, 3.175, 3.825,
-                                     4.175, 4.825, 5.175, 5.825, 6.175, 6.825, 7.175,
-                                     7.825, 8.175, 8.825, 9.175, 9.825, 10.175, 10.825,
-                                     11.175), 
-                                 y=BIBI, label=BIBI), position="dodge", vjust=-0.5, size=3.5) +
+  geom_text(data=rocr_bibi, aes(x=as.factor(x_axis), y=BIBI,
+                                group=Year, label=BIBI), position=position_dodge2(width=0.7, preserve="total"), vjust=-0.5, size=3.5) +
   theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75),
         plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
 
@@ -1189,38 +1305,45 @@ wotr_fibi_graph
 
 ```
 
-*BIBI*
+*BIBI* (corrected)
 ```{r, echo=F}
 ##creating fibi dataframe
-wotr_bibi <- data.frame(Site=rep(c("CHCK", "WOTR"), times=2),
-                        Stream=rep(c("Courthouse Creek", "Wolf Trap Creek"), times=2),
-                        BIBI=c(2.33, 2.33, 2.33, 3),
-                        Year=c(rep("2022", each=2), rep("2012", each=2)))
+# wotr_bibi <- data.frame(Site=rep(c("CHCK", "WOTR"), times=2),
+#                         Stream=rep(c("Courthouse Creek", "Wolf Trap Creek"), times=2),
+#                         BIBI=c(2.33, 2.33, 2.33, 3),
+#                         Year=c(rep("2022", each=2), rep("2012", each=2)))
 #View(wotr_bibi)
 
+wotr_bibi <- BIBI_scores2 %>%
+  filter(Park=="WOTR") %>%
+  mutate(x_axis=case_when(Stream=="CHCK"~1,
+                          Stream=="WOTR"~2)) %>%
+  mutate(stream_name=case_when(Stream=="CHCK"~"Courthouse Creek",
+                               Stream=="WOTR"~"Wolf Trap Creek"))
+
 ##2022 values only
-wotr_bibi_2022 <- wotr_bibi %>%
-  filter(Year==2022) 
-
-##adding bibi 2022 column and number column for easy graphing
-wotr_bibi2 <- wotr_bibi %>%
-  mutate(bibi_2022=rep(c(wotr_bibi_2022$BIBI), times=2)) %>%
-  mutate(x_axis=rep(c(1, 2), times=2))
-
-##adding score column
-wotr_bibi2 <- mutate_score(wotr_bibi2, wotr_bibi2$BIBI)
-#View(wotr_bibi2)
-
-##rearrange dataframe
-wotr_bibi2 <- wotr_bibi2 %>%
-  arrange(Year) %>%
-  arrange(Stream)
-#View(wotr_bibi2)
-
-##rearrange dataframe
-wotr_fibi2 <- wotr_fibi2 %>%
-  arrange(Year) %>%
-  arrange(Stream)
+# wotr_bibi_2022 <- wotr_bibi %>%
+#   filter(Year==2022) 
+# 
+# ##adding bibi 2022 column and number column for easy graphing
+# wotr_bibi2 <- wotr_bibi %>%
+#   mutate(bibi_2022=rep(c(wotr_bibi_2022$BIBI), times=2)) %>%
+#   mutate(x_axis=rep(c(1, 2), times=2))
+# 
+# ##adding score column
+# wotr_bibi2 <- mutate_score(wotr_bibi2, wotr_bibi2$BIBI)
+# #View(wotr_bibi2)
+# 
+# ##rearrange dataframe
+# wotr_bibi2 <- wotr_bibi2 %>%
+#   arrange(Year) %>%
+#   arrange(Stream)
+# #View(wotr_bibi2)
+# 
+# ##rearrange dataframe
+# wotr_fibi2 <- wotr_fibi2 %>%
+#   arrange(Year) %>%
+#   arrange(Stream)
 #View(wotr_fibi2)
 
 ##creating fibi graph
@@ -1236,16 +1359,16 @@ wotr_bibi_graph <- ggplot() +
   geom_hline(yintercept=4, linetype="dashed", color="gray55") +
   geom_hline(yintercept=3, linetype="dashed", color="gray55") +
   geom_hline(yintercept=2, linetype="dashed", color="gray55") +
-  geom_bar(data=wotr_bibi2, aes(x=as.factor(x_axis), y=BIBI, fill=Year), 
+  geom_bar(data=wotr_bibi, aes(x=as.factor(x_axis), y=BIBI, fill=Year), 
            width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
   scale_fill_manual(labels=c("2012", "2022"), values=c("gray60", "white")) +
-  scale_x_discrete(name="Stream", labels=c((wotr_bibi2 %>% group_by(Stream) %>%
-                                              summarise(mean_bibi <- mean(BIBI)))$Stream))+
+  scale_x_discrete(name="Stream", labels=c((wotr_bibi %>% group_by(stream_name) %>%
+                                              summarise(mean_bibi <- mean(BIBI)))$stream_name))+
   ylab("Benthic Index of Biotic Integrity") +
   coord_cartesian(xlim=c(0.3, 2.55), ylim=c(0.8, 5.01), expand=F) +
   theme_bw(base_size=15) +
-  geom_text(data=wotr_bibi2, aes(x=c(0.825, 1.175, 1.825, 2.175), 
-                                 y=BIBI, label=BIBI), position="dodge", vjust=-0.5, size=6) +
+  geom_text(data=wotr_bibi, aes(x=as.factor(x_axis), y=BIBI,
+                                group=Year, label=BIBI), position=position_dodge2(width=0.7, preserve="total"), vjust=-0.5, size=6) +
   theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75), axis.text.x=element_text(size=16),
         plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
 
