@@ -215,6 +215,37 @@ invert_abundance <- inverts %>%
 
 ```
 
+Confirming data with updated dataset
+```{r}
+##updated dataset
+new_invert_counts <- read.csv("NPS_counts2.csv")
+
+new_invert_counts2 <- new_invert_counts %>%
+  select(year, N_TAXA, Site, Taxon, GENUS) %>%
+  separate(Site, into=c("Network", "Park", "Site")) %>%
+  select(-Network) %>%
+  group_by(Park, Site, year) %>%
+  mutate(site_totals=sum(N_TAXA)) %>%
+  group_by(Park, Site, year, Taxon) %>%
+  mutate(taxa_totals=sum(N_TAXA)) %>%
+  mutate(taxa_percent=(taxa_totals/site_totals)*100) %>%
+  mutate(taxa_percent=round(taxa_percent, 2)) %>%
+  group_by(Park, Site, year) %>%
+  mutate(taxa_richness=length(unique(Taxon)))
+
+##comparing ANTI
+anti_inverts2 <- new_invert_counts2 %>%
+  filter(Park=="ANTI") %>%
+  filter(year==2022)
+
+##comparing PRWI
+prwi_inverts2 <- new_invert_counts2 %>%
+  filter(Park=="PRWI") %>%
+  filter(year==2021)
+
+```
+
+
 Antietam Fish
 ```{r, echo=F}
 ##subsetting for ANTI
