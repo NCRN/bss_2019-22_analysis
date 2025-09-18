@@ -749,7 +749,7 @@ nace_fibi_graph <- ggplot() +
   coord_cartesian(xlim=c(0.2, 3.6), ylim=c(0.8, 5), expand=F) +
   theme_bw(base_size=15) +
   geom_text(data=nace_fibi, aes(x=as.factor(x_axis), y=FIBI,
-                                group=Year, label=FIBI), position=position_dodge2(width=0.7, preserve="total"), vjust=-0.5, size=6) +
+                                group=Year, label=FIBI), position=position_dodge2(width=0.7, preserve="total"), vjust=-0.5, size=5) +
   theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75), axis.text.x=element_text(size=15),
         plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
 
@@ -795,7 +795,7 @@ nace_bibi_graph <- ggplot() +
   coord_cartesian(xlim=c(0.2, 3.6), ylim=c(0.8, 5), expand=F) +
   theme_bw(base_size=15) +
   geom_text(data=nace_bibi, aes(x=as.factor(x_axis), y=BIBI,
-                                group=Year, label=BIBI), position=position_dodge2(width=0.7, preserve="total"), vjust=-0.5, size=6) +
+                                group=Year, label=BIBI), position=position_dodge2(width=0.7, preserve="total"), vjust=-0.5, size=5) +
   theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75), axis.text.x=element_text(size=15),
         plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
 
@@ -915,7 +915,7 @@ prwi_bibi_graph <- ggplot() +
   coord_cartesian(xlim=c(0, 9.6), ylim=c(0.8, 5), expand=F) +
   theme_bw(base_size=15) +
   geom_text(data=prwi_bibi, aes(x=as.factor(x_axis), y=BIBI,
-                                group=Year, label=BIBI), position=position_dodge2(width=0.7, preserve="total"), vjust=-0.5, size=4.5) +
+                                group=Year, label=BIBI), position=position_dodge2(width=0.7, preserve="total"), vjust=-0.5, size=3.5) +
   theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75),
         plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
 

@@ -229,19 +229,100 @@ new_invert_counts2 <- new_invert_counts %>%
   group_by(Park, Site, year, Taxon) %>%
   mutate(taxa_totals=sum(N_TAXA)) %>%
   mutate(taxa_percent=(taxa_totals/site_totals)*100) %>%
-  mutate(taxa_percent=round(taxa_percent, 2)) %>%
+  mutate(taxa_percent=round(taxa_percent, 1)) %>%
+  group_by(Park, year) %>%
+  mutate(park_counts=sum(N_TAXA)) %>%
+  group_by(Park, year, Taxon) %>%
+  mutate(park_totals=sum(N_TAXA)) %>%
+  group_by(Park, year) %>%
+  mutate(park_percent=(park_totals/park_counts)*100) %>%
+  mutate(park_percent=round(park_percent, 1)) %>%
   group_by(Park, Site, year) %>%
   mutate(taxa_richness=length(unique(Taxon)))
 
 ##comparing ANTI
 anti_inverts2 <- new_invert_counts2 %>%
   filter(Park=="ANTI") %>%
+  # filter(year==2022)
+  filter(year==2022 | year=="2013")
+View(anti_inverts2)
+##looks good
+
+##anti taxa richness
+length(unique(anti_inverts2$Taxon))
+
+##comparing CATO
+cato_inverts2 <- new_invert_counts2 %>%
+  filter(Park=="CATO") %>%
   filter(year==2022)
+View(cato_inverts2)
+
+##cato taxa richness
+length(unique(cato_inverts2$Taxon))
+
+##comparing GWMP
+
+##comparing HAFE
+hafe_inverts2 <- new_invert_counts2 %>%
+  filter(Park=="HAFE") %>%
+  filter(year==2013)
+View(hafe_inverts2)
+##looks good
+
+##hafe taxa richness
+length(unique(hafe_inverts2$Taxon))
+
+##comparing MANA
+mana_inverts2 <- new_invert_counts2 %>%
+  filter(Park=="MANA") %>%
+  # filter(year==2022)
+  filter(year==2022 | year==2010)
+View(mana_inverts2)
+
+##mana taxa richness
+length(unique(mana_inverts2$Taxon))
+
+##comparing MONO
+mono_inverts2 <- new_invert_counts2 %>%
+  filter(Park=="MONO") %>%
+  # filter(year==2022)
+  filter(year==2022 | year==2010)
+View(mono_inverts2)
+
+##mono taxa richness
+length(unique(mono_inverts2$Taxon))
+
+##comparing NACE
+nace_inverts2 <- new_invert_counts2 %>%
+  filter(Park=="NACE") %>%
+  # filter(year==2022)
+  filter(year==2022 | year==2013)
+View(nace_inverts2)
+##looks good
+
+##nace taxa richness
+length(unique(nace_inverts2$Taxon))
 
 ##comparing PRWI
 prwi_inverts2 <- new_invert_counts2 %>%
   filter(Park=="PRWI") %>%
-  filter(year==2021)
+  filter(year==2011)
+View(prwi_inverts2)
+##looks good
+
+##prwi taxa richness
+length(unique(prwi_inverts2$Taxon))
+
+##comparing ROCR
+
+##comparing WOTR
+wotr_inverts2 <- new_invert_counts2 %>%
+  filter(Park=="WOTR") %>%
+  filter(year==2022)
+View(wotr_inverts2)
+
+##wotr taxa richness
+length(unique(wotr_inverts2$Taxon))
 
 ```
 
@@ -342,7 +423,7 @@ Catoctin Macroinverts
 ##subsetting for CATO 
 cato_inverts <- inverts %>%
   subset(Park=="CATO") %>%
-  subset(Site=="BLBZ") %>% ##plug in site here
+  subset(Site=="OWCK") %>% ##plug in site here
   group_by(SubjectTaxonomicName, year) %>%
   summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
   mutate(invert_totals= sum(sum_inverts))
@@ -368,7 +449,7 @@ cato_inverts_graph
 ##CATO % inverts 
 cato_percent_inverts <- inverts %>%
   subset(Park=="CATO") %>%
-  subset(Site=="OWCK") %>% ##plug in site here
+  subset(Site=="BGHC") %>% ##plug in site here
   group_by(SubjectTaxonomicName, year) %>%
   summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
   group_by(year) %>%
