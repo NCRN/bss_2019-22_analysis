@@ -49,6 +49,11 @@ FIBI_scores2 <- FIBI_scores1 %>%
   mutate(Cycle=case_when(Year<2019~"1",
                          Year>=2019~"2")) 
 
+FIBI_scores3 <- FIBI_scores2 %>%
+  filter(Cycle=="2")
+min(FIBI_scores3$FIBI)
+max(FIBI_scores3$FIBI)
+
 
 
 ##load in BIBI data
@@ -71,6 +76,11 @@ BIBI_scores2 <- BIBI_scores1 %>%
   mutate(Cycle=case_when(Year<2019~"1",
                          Year>=2019~"2")) %>%
   mutate(BIBI=round(BIBI, 2))
+
+BIBI_scores3 <- BIBI_scores2 %>%
+  filter(Cycle=="2")
+min(BIBI_scores3$BIBI)
+max(BIBI_scores3$BIBI)
 
 ```
 
@@ -970,7 +980,7 @@ rocr_fibi_graph <- ggplot() +
   geom_hline(yintercept=2, linetype="dashed", color="gray55") +
   geom_bar(data=rocr_fibi, aes(x=as.factor(x_axis), y=FIBI, fill=Cycle), 
            width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
-  scale_fill_manual(labels=c("2008, *14", "2019, ‡22"), values=c("gray60", "white")) +
+  scale_fill_manual(labels=c("2008, *09", "2019, ‡22"), values=c("gray60", "white")) +
   scale_x_discrete(name="Stream", labels=c((rocr_fibi %>% group_by(stream_name) %>%
                                               summarise(mean_fibi <- mean(FIBI)))$stream_name),
                    guide=guide_axis(angle = 40))+
@@ -1033,7 +1043,7 @@ rocr_bibi_graph <- ggplot() +
   geom_hline(yintercept=2, linetype="dashed", color="gray55") +
   geom_bar(data=rocr_bibi, aes(x=as.factor(x_axis), y=BIBI, fill=Cycle), 
            width=0.7, color="black", size=0.8, position="dodge", stat="identity") +
-  scale_fill_manual(labels=c("2008, *14", "2019, ‡22"), values=c("gray60", "white")) +
+  scale_fill_manual(labels=c("2008, *14", "2019, ‡22"), values=c("gray60", "white"), name="Year") +
   scale_x_discrete(name="Stream", labels=c((rocr_bibi %>% group_by(stream_name) %>%
                                               summarise(mean_bibi <- mean(BIBI)))$stream_name),
                    guide=guide_axis(angle = 40))+
@@ -1042,7 +1052,8 @@ rocr_bibi_graph <- ggplot() +
   theme_bw(base_size=15) +
   geom_text(data=rocr_bibi, aes(x=as.factor(x_axis), y=BIBI,
                                 group=Year, label=BIBI), position=position_dodge2(width=0.7, preserve="total"), vjust=-0.5, size=3.5) +
-  theme(axis.title.y=element_text(size=20, vjust=+3), axis.title.x=element_text(size=20, vjust=-0.75),
+  theme(axis.title.y=element_text(size=20, vjust=+3), 
+        axis.title.x=element_text(size=20, vjust=-0.75),
         plot.margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "cm"))
 
 rocr_bibi_graph
