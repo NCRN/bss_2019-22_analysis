@@ -248,7 +248,7 @@ new_invert_counts2 <- new_invert_counts %>%
 ##comparing ANTI
 anti_inverts2 <- new_invert_counts2 %>%
   filter(Park=="ANTI") %>%
-  filter(year==2013)
+  filter(year==2022)
   # filter(year==2022 | year=="2013")
 View(anti_inverts2)
 ##looks good
