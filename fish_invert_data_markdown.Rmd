@@ -840,7 +840,7 @@ Prince William Macroinverts
 ##subsetting for PRWI 
 prwi_inverts <- inverts %>%
   subset(Park=="PRWI") %>%
-  subset(Site=="BONE") %>% ##plug in site here
+  subset(Site=="NFQC") %>% ##plug in site here
   #subset(year==2021) %>%
   group_by(SubjectTaxonomicName, year) %>%
   summarize(sum_inverts=sum(as.numeric(ResultMeasureValue), na.rm=T)) %>%
