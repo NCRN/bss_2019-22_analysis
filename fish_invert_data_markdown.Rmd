@@ -213,6 +213,15 @@ invert_abundance <- inverts %>%
   summarize(invert_totals=sum(as.numeric(ResultMeasureValue), na.rm=T))
 #View(invert_abundance)
 
+
+
+
+##tolerance level of macroinvertebrate taxa
+# inverts_current <- inverts %>%
+#   filter(year>2018) %>%
+#   select(SubjectTaxonomicName) %>%
+#   distinct()
+
 ```
 
 Confirming data with updated dataset
@@ -244,6 +253,38 @@ new_invert_counts2 <- new_invert_counts %>%
   mutate(taxa_richness=length(unique(Taxon))) %>%
   group_by(cycle) %>%
   mutate(region_richness=length(unique(Taxon)))
+
+
+##tolerance level of macroinvertebrate taxa
+inverts_current <- new_invert_counts2 %>%
+  filter(year>2018) %>%
+  group_by(Taxon) %>%
+  summarize(count=sum(N_TAXA))
+  # select(Taxon) %>%
+  # distinct()
+
+metadata <- read.csv("bss_macroinvert_lookup.csv") %>%
+  select(Taxon, TolVal)
+
+taxa_tolval <- merge(inverts_current, metadata, by="Taxon") %>%
+  mutate(TolVal=case_when(Taxon=="Sympotthastia"~8.2,
+                          TRUE~TolVal)) %>%
+  mutate(tolerance=case_when(TolVal<=3~"Sensitive",
+                             TolVal>3 & TolVal<7~"Intermediate",
+                             TolVal>=7 | Taxon=="Cricotopus/orthocladius" ~"Tolerant",
+                             TRUE~"Unclassified/unknown")) %>%
+  mutate(number=1) %>%
+  group_by(tolerance) %>%
+  summarize(tol_taxa=sum(number))
+
+##tolvals different from metadata
+##Acerpenna (2.6), antocha (8), 
+
+tol_counts <- taxa_tolval %>%
+  group_by(tolerance) %>%
+  summarize(tol_count=sum(count))
+
+
 
 ##comparing ANTI
 anti_inverts2 <- new_invert_counts2 %>%
