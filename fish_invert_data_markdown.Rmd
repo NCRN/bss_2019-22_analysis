@@ -8,9 +8,9 @@ output: html_document
 ```{r setup, include=FALSE}
 #knitr::opts_chunk$set(echo = TRUE)
 
-##setting working directory and loading data
-current_wd <- getwd()
-setwd(current_wd)
+##set wd in Session
+# current_wd <- getwd()
+# setwd(current_wd)
 stream_data <- read.csv("20250225_wqp_wqx_bss_wq_npsncrn.csv")
 colnames(stream_data)
 head(stream_data)
@@ -85,6 +85,23 @@ inverts <- fish_inverts2 %>%
 #View(inverts)
 
 ```
+
+finding number of chironomid genera identified in NCRN
+```{r}
+invert_genera <- read.csv("NPS_counts2.csv")
+# View(invert_genera)
+
+chironomids <- invert_genera %>%
+  filter(FAMILY=="Chironomidae")
+
+length(unique(chironomids$GENUS))
+##74
+##-1 for Cricotopus/Orthocladius = 73
+
+
+```
+
+
 
 Fish general stats
 ```{r}
