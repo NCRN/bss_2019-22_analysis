@@ -91,6 +91,7 @@ finding number of chironomid genera identified in NCRN
 invert_genera <- read.csv("NPS_counts2.csv")
 # View(invert_genera)
 
+##filtering for chironomids
 chironomids <- invert_genera %>%
   filter(FAMILY=="Chironomidae")
 
